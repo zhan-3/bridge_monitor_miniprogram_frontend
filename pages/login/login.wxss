@@ -1,0 +1,124 @@
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #FF7A00 0%, #FF9933 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 30px 40px;
+}
+
+.login-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 50px;
+}
+
+.logo-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.login-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 50px;
+  width: 100%;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.step-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.step-item.active .step-num {
+  background: #fff;
+  color: var(--orange-primary);
+}
+
+.step-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.step-item.active .step-text {
+  color: #fff;
+  font-weight: 500;
+}
+
+.step-line {
+  width: 40px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.3);
+  margin: 0 8px;
+  margin-bottom: 20px;
+}
+
+.step-line.active {
+  background: #fff;
+}
+
+.login-content {
+  width: 100%;
+  margin-bottom: 30px;
+}
+
+.login-btn {
+  width: 100%;
+  height: 50px;
+  background: #fff;
+  border-radius: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.login-btn.primary {
+  background: #fff;
+}
+
+.login-btn .btn-icon {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+.login-btn .btn-text {
+  font-size: 16px;
+  color: #333;
+  font-weight: 500;
+}
+
+.step-hint {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+}

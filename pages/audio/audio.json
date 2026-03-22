@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "录音信息",
+  "enablePullDownRefresh": false,
+  "backgroundColor": "#f5f5f5",
+  "usingComponents": {
+    "white-card": "/components/white-card/white-card",
+    "custom-button": "/components/custom-button/custom-button"
+  }
+}

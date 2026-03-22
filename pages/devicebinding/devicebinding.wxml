@@ -1,0 +1,59 @@
+<view class="container">
+  <!-- 原有页面内容（不变） -->
+  <view class="header-icon">
+    <text class="icon-text">📱</text>
+  </view>
+  <view class="header-title">绑定新设备</view>
+  <view class="header-desc">将设备绑定到您的账户</view>
+
+  <view class="bind-methods">
+    <view class="method-card scan" bindtap="scanBindDevice">
+      <view class="method-icon">
+        <text class="icon-text">⊕</text>
+      </view>
+      <view class="method-title">扫码绑定</view>
+      <view class="method-desc">扫描设备上的二维码</view>
+    </view>
+
+    <view class="method-card manual" bindtap="openManualBind">
+      <view class="method-icon">
+        <text class="icon-text">✎</text>
+      </view>
+      <view class="method-title">手动输入</view>
+      <view class="method-desc">输入设备SN码绑定</view>
+    </view>
+  </view>
+
+  <view class="tips-section">
+    <view class="tips-title">绑定说明</view>
+    <view class="tips-item">1. 找到设备机身上的二维码或SN码</view>
+    <view class="tips-item">2. 点击扫码或手动输入SN码</view>
+    <view class="tips-item">3. 绑定成功后即可使用设备功能</view>
+  </view>
+
+  <!-- 手动绑定弹窗（核心修改） -->
+  <view class="modal-mask" wx:if="{{showManualBind}}" bindtap="closeManualBind"></view>
+  <view class="modal-container" wx:if="{{showManualBind}}" catchtap>
+    <!-- 弹窗标题 -->
+    <view class="modal-header">
+      <view class="modal-title">输入设备SN码</view>
+      <view class="modal-close" bindtap="closeManualBind">✕</view>
+    </view>
+    <!-- 输入框 -->
+    <view class="modal-body">
+      <input 
+        class="modal-input" 
+        type="text" 
+        placeholder="请输入设备SN码（20位以内）" 
+        bindinput="onInputSN"
+        value="{{inputSN}}"
+        maxlength="20"
+      />
+    </view>
+    <!-- 按钮组 -->
+    <view class="modal-footer">
+      <button class="modal-btn cancel" bindtap="closeManualBind">取消</button>
+      <button class="modal-btn confirm" bindtap="confirmBind">确认绑定</button>
+    </view>
+  </view>
+</view>

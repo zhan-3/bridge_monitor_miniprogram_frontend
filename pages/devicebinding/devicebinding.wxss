@@ -1,0 +1,269 @@
+/* 全局变量（继承app.wxss） */
+:root {
+  --orange-primary: #FF7A00;
+  --orange-light: #FFE8D8;
+  --orange-dark: #E86A00;
+  --text-main: #333;
+  --text-secondary: #666;
+  --bg-main: #fff;
+  --border-color: #eee;
+}
+
+/* 原有页面样式（不变） */
+.container {
+  padding: 40px 20px 20px;
+  background: linear-gradient(180deg, #fff 0%, #f6f6f6 100%);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.header-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: var(--orange-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.icon-text {
+  font-size: 40px;
+  color: var(--orange-primary);
+}
+
+.header-title {
+  font-size: 22px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.header-desc {
+  font-size: 14px;
+  color: #999;
+  margin-bottom: 32px;
+}
+
+.bind-methods {
+  display: flex;
+  gap: 16px;
+  width: 100%;
+  margin-bottom: 32px;
+}
+
+.method-card {
+  flex: 1;
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s;
+}
+
+.method-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+}
+
+.method-card.scan {
+  background: linear-gradient(135deg, #FF7A00 0%, #FF9933 100%);
+  color: #fff;
+}
+
+.method-card.scan .method-icon,
+.method-card.scan .method-title,
+.method-card.scan .method-desc {
+  color: #fff;
+}
+
+.method-card.scan .method-icon {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.method-card.scan .icon-text {
+  color: #fff;
+}
+
+.method-card.manual {
+  background: #fff;
+}
+
+.method-card.manual .icon-text {
+  color: var(--orange-primary);
+}
+
+.method-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.method-card.manual .method-icon {
+  background: var(--orange-light);
+}
+
+.method-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.method-desc {
+  font-size: 12px;
+  opacity: 0.8;
+  text-align: center;
+}
+
+.tips-section {
+  width: 100%;
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+}
+
+.tips-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.tips-item {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.8;
+}
+
+/* 弹窗样式（核心修改） */
+.modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+  animation: maskFadeIn 0.2s ease;
+}
+
+.modal-container {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 85%;
+  max-width: 320px;
+  background: var(--bg-main);
+  border-radius: 16px;
+  overflow: hidden;
+  z-index: 999;
+  animation: modalPopIn 0.2s ease;
+}
+
+/* 弹窗头部（标题+关闭按钮） */
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modal-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.modal-close {
+  font-size: 20px;
+  color: var(--text-secondary);
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 弹窗主体（输入框） */
+.modal-body {
+  padding: 20px;
+}
+
+.modal-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.modal-input:focus {
+  border-color: var(--orange-primary);
+  outline: none;
+}
+
+/* 弹窗底部（按钮组） */
+.modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 12px;
+}
+
+.modal-btn {
+  flex: 1;
+  height: 44px;
+  line-height: 44px;
+  border-radius: 8px;
+  font-size: 15px;
+  border: none;
+}
+
+/* 取消按钮 */
+.modal-btn.cancel {
+  background: var(--bg-main);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+/* 确认按钮 */
+.modal-btn.confirm {
+  background: var(--orange-primary);
+  color: white;
+}
+
+.modal-btn.confirm:active {
+  background: var(--orange-dark);
+}
+
+/* 动画 */
+@keyframes maskFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalPopIn {
+  from { 
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to { 
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

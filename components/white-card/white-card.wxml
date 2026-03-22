@@ -1,0 +1,19 @@
+<view class="white-card-container {{customClass}}">
+  <view class="card-header" wx:if="{{title || showRightContent}}">
+    <view class="header-left" style="flex: 1;">
+      <text class="header-title">{{title}}</text>
+    </view>
+    <view class="header-right" wx:if="{{showRightContent}}" style="display: flex; align-items: center;">
+      <slot name="rightContent"></slot>
+    </view>
+  </view>
+  
+  <view class="card-body">
+    <slot></slot>
+  </view>
+  
+  <view class="card-footer" wx:if="{{footerText || footerSlot}}">
+    <text class="footer-text" wx:if="{{footerText && !footerSlot}}">{{footerText}}</text>
+    <slot name="footer" wx:if="{{footerSlot}}"></slot>
+  </view>
+</view>

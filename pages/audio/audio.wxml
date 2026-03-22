@@ -1,0 +1,163 @@
+<view class="audio-container">
+  <!-- 音频播放器区域 -->
+  <view class="player-section" wx:if="{{currentAudio}}">
+    <view class="player-card">
+      <view class="player-header">
+        <view class="player-info">
+          <view class="player-title">{{currentAudio.name}}</view>
+          <view class="player-meta">{{currentAudio.date}} {{currentAudio.time}}</view>
+        </view>
+        <view class="player-status {{currentAudio.status}}">
+          {{currentAudio.status === 'emergency' ? '紧急' : '正常'}}
+        </view>
+      </view>
+
+      <!-- 波形图区域（修复样式绑定语法，消除编辑器报错） -->
+      <view class="waveform-wrap">
+        <view class="waveform {{isPlaying ? 'active' : ''}}">
+          <view 
+            wx:for="{{waveformBars}}" 
+            wx:key="index" 
+            class="wave-bar"
+            style="--bar-height: {{item}}%;"
+          ></view>
+        </view>
+      </view>
+
+      <!-- 进度条控制 -->
+      <view class="player-controls">
+        <text class="time-current">{{currentTime}}</text>
+        <slider 
+          class="progress-slider"
+          value="{{progress}}"
+          activeColor="#FF7A00"
+          backgroundColor="#eee"
+          block-size="14"
+          bindchange="onSliderChange"
+          bindchanging="onSliderChanging"
+        />
+        <text class="time-total">{{formatTotal}}</text>
+      </view>
+
+      <!-- 播放控制按钮 -->
+      <view class="control-buttons">
+        <view class="control-btn" bindtap="previousAudio">
+          <image src="/images/last.png" mode="widthFix" lazy-load="true"></image>
+        </view>
+        <view class="control-btn play-btn" bindtap="togglePlay">
+          <image src="/images/{{isPlaying ? 'pause' : 'play'}}.png" mode="widthFix" lazy-load="true"></image>
+        </view>
+        <view class="control-btn" bindtap="nextAudio">
+          <image src="/images/next.png" mode="widthFix" lazy-load="true"></image>
+        </view>
+      </view>
+
+      <!-- 倍速控制 -->
+      <view class="speed-bar">
+        <text class="speed-label">速度</text>
+        <view class="speed-options">
+          <text 
+            class="speed-opt {{playbackRate === 0.5 ? 'active' : ''}}"
+            bindtap="setSpeed"
+            data-rate="0.5"
+          >0.5x</text>
+          <text 
+            class="speed-opt {{playbackRate === 1 ? 'active' : ''}}"
+            bindtap="setSpeed"
+            data-rate="1"
+          >1x</text>
+          <text 
+            class="speed-opt {{playbackRate === 1.5 ? 'active' : ''}}"
+            bindtap="setSpeed"
+            data-rate="1.5"
+          >1.5x</text>
+          <text 
+            class="speed-opt {{playbackRate === 2 ? 'active' : ''}}"
+            bindtap="setSpeed"
+            data-rate="2"
+          >2x</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 录音列表区域 -->
+  <view class="list-section">
+    <view class="list-header">
+      <view class="list-title">录音列表</view>
+      <view class="list-actions">
+        <text class="sort-btn" bindtap="toggleSort">
+          {{sortType === 'desc' ? '📅 最新' : '📅 最旧'}}
+        </text>
+        <text class="filter-btn" bindtap="toggleFilter">
+          {{filterType === 'all' ? '全部' : filterType === 'emergency' ? '⚠️ 紧急' : '⭐ 收藏'}}
+        </text>
+      </view>
+    </view>
+
+    <!-- 列表滚动区域 -->
+    <scroll-view class="audio-list" scroll-y enhanced show-scrollbar="{{false}}">
+      <block wx:for="{{filteredList}}" wx:key="id">
+        <view 
+          class="audio-item {{currentAudio && item.id === currentAudio.id ? 'active' : ''}}"
+          bindtap="selectAudio"
+          data-index="{{item.index}}"
+          bindlongpress="showActionMenu"
+          data-id="{{item.id}}"
+          data-item="{{item}}"
+        >
+          <view class="audio-icon">🎵</view>
+          <view class="audio-content">
+            <view class="audio-name">{{item.name}}</view>
+            <view class="audio-details">
+              <text class="audio-date">{{item.date}}</text>
+              <text class="audio-dot">·</text>
+              <text class="audio-time">{{item.time}}</text>
+              <text class="audio-dot">·</text>
+              <text class="audio-duration">{{item.duration}}</text>
+            </view>
+          </view>
+          <view class="audio-right">
+            <view class="audio-status {{item.status}}">
+              {{item.status === 'emergency' ? '紧急' : '正常'}}
+            </view>
+            <text class="collect-icon {{item.isCollect ? 'active' : ''}}">
+              {{item.isCollect ? '★' : '☆'}}
+            </text>
+          </view>
+        </view>
+      </block>
+
+      <!-- 空列表提示 -->
+      <view wx:if="{{filteredList.length === 0}}" class="empty-state">
+        <view class="empty-icon">🎙️</view>
+        <view class="empty-text">暂无录音文件</view>
+        <view class="empty-desc">报警时自动录制现场音频</view>
+      </view>
+    </scroll-view>
+  </view>
+</view>
+
+<!-- 长按操作弹窗（修复可选链和catchtap报错） -->
+<view class="action-modal" wx:if="{{showActionSheet}}" bindtap="hideActionMenu">
+  <view class="action-sheet" catchtap>
+    <!-- 修复可选链：改用三元表达式做空值判断 -->
+    <view class="action-title">{{selectedItem ? selectedItem.name : '操作'}}</view>
+    <view class="action-list">
+      <view class="action-item" bindtap="playSelected">
+        <text class="action-icon">▶️</text>
+        <text class="action-text">播放</text>
+      </view>
+      <view class="action-item" bindtap="collectRecord">
+        <!-- 修复可选链：先判断selectedItem是否存在 -->
+        <text class="action-icon">{{selectedItem && selectedItem.isCollect ? '☆' : '★'}}</text>
+        <text class="action-text">{{selectedItem && selectedItem.isCollect ? '取消收藏' : '收藏'}}</text>
+      </view>
+      <view class="action-item delete" bindtap="delHandler">
+        <text class="action-icon">🗑️</text>
+        <text class="action-text">删除</text>
+      </view>
+    </view>
+    <view class="action-cancel" bindtap="hideActionMenu">取消</view>
+  </view>
+</view>
