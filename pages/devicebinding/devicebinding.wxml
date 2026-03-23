@@ -53,7 +53,7 @@
     <!-- 按钮组 -->
     <view class="modal-footer">
       <button class="modal-btn cancel" bindtap="closeManualBind">取消</button>
-      <button class="modal-btn confirm" bindtap="confirmBind">确认绑定</button>
+      <button class="modal-btn confirm" bindtap="confirmBind" loading="{{isLoading}}">确认绑定</button>
     </view>
   </view>
 </view>
