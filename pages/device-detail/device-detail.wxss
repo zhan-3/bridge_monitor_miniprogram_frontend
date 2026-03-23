@@ -209,6 +209,7 @@
   border-radius: 50%;
   background-color: var(--orange-light);
   display: inline-block;
+  pointer-events: auto;
 }
 
 .contact-item-wrap {
@@ -340,7 +341,7 @@
 
 .modal-btn-group {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -349,6 +350,7 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  max-width: calc(50% - 4px);
 }
 
 .modal-btn-half button,
