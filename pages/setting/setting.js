@@ -2,34 +2,28 @@ const defaultDevices = [
   {
     id: '1',
     name: '智能烟雾报警器 A1',
-    sn: 'SA100-2024-A7B3C9D1',
     latitude: 39.9042,
     longitude: 116.4074,
     address: '北京市朝阳区建国路88号',
     status: 'normal',
-    statusText: '正常',
     contacts: []
   },
   {
     id: '2',
     name: '智能燃气探测器 G2',
-    sn: 'GD200-2024-X8Y2Z6W5',
     latitude: 39.9088,
     longitude: 116.3975,
     address: '北京市东城区王府井大街138号',
     status: 'alarm',
-    statusText: '报警',
     contacts: []
   },
   {
     id: '3',
     name: '智能门磁感应器 M3',
-    sn: 'MD300-2025-K1L3M5N7',
     latitude: 39.9140,
     longitude: 116.4040,
     address: '北京市西城区西单北大街120号',
     status: 'offline',
-    statusText: '离线',
     contacts: []
   }
 ];
