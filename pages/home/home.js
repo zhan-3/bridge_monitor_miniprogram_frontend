@@ -50,7 +50,6 @@ Page({
       {
         id: '1',
         name: '智能烟雾报警器 A1',
-        sn: 'SA100-2024-A7B3C9D1',
         status: 'normal',
         contacts: [
           { id: 'c1', name: '张明辉', phone: '13812345678' },
@@ -60,7 +59,6 @@ Page({
       {
         id: '2',
         name: '智能燃气探测器 G2',
-        sn: 'GD200-2024-X8Y2Z6W5',
         status: 'alarm',
         contacts: [
           { id: 'c3', name: '王建国', phone: '13698765432' },
@@ -71,7 +69,6 @@ Page({
         id: '3',
         name: '智能门磁感应器 M3',
         owner: '周文杰',
-        sn: 'MD300-2025-K1L3M5N7',
         status: 'offline',
         contacts: [
           { id: 'c5', name: '周文杰', phone: '15811112222' }

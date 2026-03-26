@@ -62,7 +62,7 @@ Page({
     }
   },
 
-  // ========== 保留你所有原有工具方法 ==========
+  
   generateWaveform() {
     const waveform = [];
     for (let i = 0; i < 50; i++) {
