@@ -1,10 +1,12 @@
 import {getStorage, setStorage} from '../../utils/storage';
+import http from '../../utils/http';
 
 Page({
   data: {
     isLogin: false,
     userInfo: {},
-    devices: []
+    devices: [],
+    currentSn: ''   // 当前激活的设备SN
   },
 
   // 把状态映射表定义为页面私有常量（避免data读取延迟问题）
@@ -15,84 +17,89 @@ Page({
   },
 
   onShow() {
-    // const userInfo = getStorage('userInfo');
-    // const isLogin = getStorage('isLogin');
-    const userInfo = {
-      avatarUrl: "https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132",
-      city: "",
-      country: "",
-      gender: 0,
-      is_demote: true,
-      language: "",
-      nickName: "微信用户",
-      province: ""
-    };
-    if (userInfo && Object.keys(userInfo).length > 0 || isLogin) {
-      this.setData({
-        isLogin: true,
-        userInfo: userInfo || { userName: '默认用户名' }
-      });
-    } else {
-      this.setData({
-        isLogin: false,
-        userInfo: {}
-      });
+    const isLogin = getStorage('isLogin');
+    const token = getStorage('token');
+
+    if (!isLogin || !token) {
+      this.setData({ isLogin: false, userInfo: {} });
+      return;
     }
-    this.loadDevices();
+
+    const app = getApp();
+    this.setData({ isLogin: true, currentSn: app.globalData.currentSn });
+    this.loadUserInfo();
+    this.loadAllDevices();
+
+    // 定时轮询，实时感知报警状态变化
+    if (this.pollTimer) clearInterval(this.pollTimer);
+    this.pollTimer = setInterval(() => this.loadAllDevices(), 7000);
   },
 
-  loadDevices() {
-    // 临时清空本地缓存的旧数据（仅调试用，后续可删除）
-    //wx.removeStorageSync('devices');
-    
-    // 读取设备数据（优先缓存，无则用默认）
-    const devices = wx.getStorageSync('devices') || [
-      {
-        id: '1',
-        name: '智能烟雾报警器 A1',
-        status: 'normal',
-        contacts: [
-          { id: 'c1', name: '张明辉', phone: '13812345678' },
-          { id: 'c2', name: '李晓芳', phone: '13923456789' }
-        ]
-      },
-      {
-        id: '2',
-        name: '智能燃气探测器 G2',
-        status: 'alarm',
-        contacts: [
-          { id: 'c3', name: '王建国', phone: '13698765432' },
-          { id: 'c4', name: '赵丽华', phone: '13567890123' }
-        ]
-      },
-      {
-        id: '3',
-        name: '智能门磁感应器 M3',
-        owner: '周文杰',
-        status: 'offline',
-        contacts: [
-          { id: 'c5', name: '周文杰', phone: '15811112222' }
-        ]
+  onHide() {
+    clearInterval(this.pollTimer);
+  },
+
+  onUnload() {
+    clearInterval(this.pollTimer);
+  },
+
+  // 从后端获取用户信息
+  async loadUserInfo() {
+    try {
+      const res = await http.get('/user/getMainMessage');
+      if (res.code === 1 && res.data) {
+        const { nickName, avatarUrl, phone } = res.data;
+        const userInfo = { nickName, avatarUrl, phone };
+        setStorage('userInfo', userInfo);
+        this.setData({ userInfo });
       }
-    ];
+    } catch (err) {
+      console.error('获取用户信息失败：', err);
+      const userInfo = getStorage('userInfo') || {};
+      this.setData({ userInfo });
+    }
+  },
 
-    // 调试：打印原始设备数据，确认status值
-    console.log('原始设备数据：', devices);
+  // 遍历所有已绑定设备的token，构建设备列表
+  async loadAllDevices() {
+    const app = getApp();
+    const deviceTokens = app.globalData.deviceTokens;
 
-    const fixedDevices = devices.map(d => {
-      // 先确保status有默认值，避免undefined
-      const currentStatus = d.status || 'normal';
-      return {
-        ...d,
-        status: currentStatus,
-        statusText: this.statusTextMap[currentStatus] || '未知状态',
-        latitude: d.latitude || 39.9042,
-        longitude: d.longitude || 116.4074,
-        address: d.address || '地址未知'
-      };
-    });
+    if (!deviceTokens || deviceTokens.length === 0) {
+      this.setData({ devices: [] });
+      return;
+    }
 
-    this.setData({ devices: fixedDevices });
+    const devices = [];
+    for (const dt of deviceTokens) {
+      try {
+        // 用各自的token请求，避免切换全局token
+        const bindRes = await http.get('/user/bind/status', {}, {
+          Authorization: `Bearer ${dt.token}`
+        });
+        if (bindRes.code === 1 && bindRes.data && bindRes.data !== '') {
+          const { deviceName, status = 'normal' } = bindRes.data;
+          const name = deviceName || dt.sn;
+          const statusTextMap = { normal: '正常', alarm: '警报中', offline: '设备离线' };
+          dt.name = name;
+          devices.push({
+            id: dt.sn,
+            sn: dt.sn,
+            name,
+            status,
+            statusText: statusTextMap[status] || '正常'
+          });
+        }
+      } catch (err) {
+        console.error('获取设备状态失败：', dt.sn, err);
+      }
+    }
+
+    // 更新本地存储的设备名称
+    setStorage('deviceTokens', deviceTokens);
+    app.globalData.deviceTokens = deviceTokens;
+
+    this.setData({ devices });
   },
 
   goLogin() {
@@ -108,9 +115,12 @@ Page({
   },
 
   goDeviceDetail(e) {
-    const deviceId = e.currentTarget.dataset.id;
+    const sn = e.currentTarget.dataset.id;
+    // 切换到该设备的token，后续所有请求自动使用对应设备数据
+    getApp().switchDevice(sn);
+    this.setData({ currentSn: sn });
     wx.navigateTo({
-      url: `/pages/device-detail/device-detail?id=${deviceId}`
+      url: `/pages/device-detail/device-detail?id=${sn}`
     });
   }
 });
