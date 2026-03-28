@@ -1,40 +1,4 @@
-const defaultDevices = [
-  {
-    id: '1',
-    name: '智能烟雾报警器 A1',
-    latitude: 39.9042,
-    longitude: 116.4074,
-    address: '北京市朝阳区建国路88号',
-    status: 'normal',
-    contacts: [
-      { id: 'c1', name: '张明辉', phone: '13812345678' },
-      { id: 'c2', name: '李晓芳', phone: '13923456789' }
-    ]
-  },
-  {
-    id: '2',
-    name: '智能燃气探测器 G2',
-    latitude: 39.9088,
-    longitude: 116.3975,
-    address: '北京市东城区王府井大街138号',
-    status: 'alarm',
-    contacts: [
-      { id: 'c3', name: '王建国', phone: '13698765432' },
-      { id: 'c4', name: '赵丽华', phone: '13567890123' }
-    ]
-  },
-  {
-    id: '3',
-    name: '智能门磁感应器 M3',
-    latitude: 39.9140,
-    longitude: 116.4040,
-    address: '北京市西城区西单北大街120号',
-    status: 'offline',
-    contacts: [
-      { id: 'c5', name: '周文杰', phone: '15811112222' }
-    ]
-  }
-];
+import http from '../../utils/http';
 
 Page({
   data: {
@@ -51,64 +15,90 @@ Page({
   },
 
   onLoad(options) {
-    const deviceId = options.id;
-    this.loadDevice(deviceId);
+    this.loadDeviceFromAPI();
   },
 
   onShow() {
-    const { device } = this.data;
-    if (device) {
-      this.loadDevice(device.id);
+    if (this.data.device) {
+      this.loadDeviceFromAPI();
     }
   },
 
-  
-  loadDevice(deviceId) {
-    const devices = wx.getStorageSync('devices') || defaultDevices;
-    const device = devices.find(d => d.id === deviceId);
-    if (device) {
-      const lat = Number(device.latitude) || 39.9042;
-      const lng = Number(device.longitude) || 116.4074;
-      const deviceName = device.name || '未知设备';
-      const alarmType = device.alarmType || device.statusText || '正常';
-      
-      const markers = [{
-        id: 1,
-        latitude: lat,
-        longitude: lng,
-        snippet: device.address || '未知地址',
-        iconPath: '/images/marker-emergency.png',
-        width: 32,
-        height: 42,
-        callout: {
-          content: [
-            deviceName,
-            alarmType,
-            device.address || '未知地址'
-          ].filter(Boolean).join('\n'),
-          display: 'BYCLICK',
-          fontSize: 12,
-          bgColor: device.status === 'alarm' ? '#dc143c' : '#52c41a',
-          color: '#fff',
-          padding: 8,
-          borderRadius: 4
-        },
-        animation: true
-      }];
-      this.setData({ device, markers: markers });
-    } else {
-      wx.showToast({ title: '设备不存在', icon: 'none' });
-      setTimeout(() => wx.navigateBack(), 1500);
-    }
-  },
+  // 从后端API加载设备数据（位置+联系人）
+  async loadDeviceFromAPI() {
+    const device = {
+      id: '1',
+      name: '我的报警器',
+      status: 'normal',
+      latitude: 39.9042,
+      longitude: 116.4074,
+      address: '设备位置',
+      contacts: []
+    };
 
-  saveDevices() {
-    const devices = wx.getStorageSync('devices') || defaultDevices;
-    const index = devices.findIndex(d => d.id === this.data.device.id);
-    if (index >= 0) {
-      devices[index] = this.data.device;
+    // 获取绑定信息
+    try {
+      const bindRes = await http.get('/user/bind/status');
+      if (bindRes.code === 1 && bindRes.data && bindRes.data !== '') {
+        device.name = bindRes.data.deviceName || '我的报警器';
+      }
+    } catch (err) {
+      console.error('获取绑定状态失败：', err);
     }
-    wx.setStorageSync('devices', devices);
+
+    // 获取设备GPS位置
+    try {
+      const locRes = await http.get('/user/getLocation');
+      if (locRes.code === 1 && locRes.data) {
+        device.latitude = parseFloat(locRes.data.gpsLat) || 39.9042;
+        device.longitude = parseFloat(locRes.data.gpsLng) || 116.4074;
+      }
+    } catch (err) {
+      console.error('获取设备位置失败：', err);
+    }
+
+    // 获取紧急联系人列表
+    try {
+      const phoneRes = await http.get('/user/userGetPhone');
+      if (phoneRes.code === 1 && Array.isArray(phoneRes.data)) {
+        device.contacts = phoneRes.data.map((item, index) => ({
+          id: 'c' + index,
+          name: item.name,
+          phone: item.phone
+        }));
+      }
+    } catch (err) {
+      console.error('获取联系人失败：', err);
+    }
+
+    // 设置地图标记
+    const lat = Number(device.latitude);
+    const lng = Number(device.longitude);
+    const markers = [{
+      id: 1,
+      latitude: lat,
+      longitude: lng,
+      snippet: device.address || '未知地址',
+      iconPath: '/images/marker-emergency.png',
+      width: 32,
+      height: 42,
+      callout: {
+        content: [
+          device.name,
+          device.status === 'alarm' ? '警报中' : '正常',
+          device.address || '未知地址'
+        ].filter(Boolean).join('\n'),
+        display: 'BYCLICK',
+        fontSize: 12,
+        bgColor: device.status === 'alarm' ? '#dc143c' : '#52c41a',
+        color: '#fff',
+        padding: 8,
+        borderRadius: 4
+      },
+      animation: true
+    }];
+
+    this.setData({ device, markers });
   },
 
   editName() {
@@ -137,7 +127,6 @@ Page({
       showEditNameModal: false,
       tempName: ''
     });
-    this.saveDevices();
     wx.showToast({ title: '保存成功', icon: 'success' });
   },
 
@@ -161,7 +150,7 @@ Page({
     this.setData({ tempContactPhone: e.detail.value.trim() });
   },
 
-  saveContact() {
+  async saveContact() {
     const { tempContactName, tempContactPhone, device } = this.data;
     if (!tempContactName) {
       wx.showToast({ title: '请输入联系人姓名', icon: 'none' });
@@ -176,32 +165,57 @@ Page({
       wx.showToast({ title: '该手机号已添加', icon: 'none' });
       return;
     }
-    const newContact = {
-      id: 'c' + Date.now(),
-      name: tempContactName,
-      phone: tempContactPhone
-    };
-    this.setData({
-      'device.contacts': [...device.contacts, newContact],
-      showAddContactModal: false,
-      tempContactName: '',
-      tempContactPhone: ''
-    });
-    this.saveDevices();
-    wx.showToast({ title: '添加成功', icon: 'success' });
+
+    try {
+      wx.showLoading({ title: '添加中...' });
+      const res = await http.post('/user/addPhoneNumber', { number: tempContactPhone, name: tempContactName });
+
+      wx.hideLoading();
+      if (res.code === 1) {
+        const newContact = {
+          id: 'c' + Date.now(),
+          name: tempContactName,
+          phone: tempContactPhone
+        };
+        this.setData({
+          'device.contacts': [...device.contacts, newContact],
+          showAddContactModal: false,
+          tempContactName: '',
+          tempContactPhone: ''
+        });
+        wx.showToast({ title: '添加成功', icon: 'success' });
+      }
+    } catch (err) {
+      wx.hideLoading();
+      console.error('添加联系人失败：', err);
+    }
   },
 
   deleteContact(e) {
     const contactId = e.currentTarget.dataset.id;
+    const contact = this.data.device.contacts.find(c => c.id === contactId);
+    if (!contact) return;
+
     wx.showModal({
       title: '提示',
       content: '确定要删除该联系人吗？',
-      success: (res) => {
+      success: async (res) => {
         if (res.confirm) {
-          const contacts = this.data.device.contacts.filter(c => c.id !== contactId);
-          this.setData({ 'device.contacts': contacts });
-          this.saveDevices();
-          wx.showToast({ title: '删除成功', icon: 'success' });
+          try {
+            wx.showLoading({ title: '删除中...' });
+            // 调用后端接口删除紧急联系人（API要求query参数）
+            const delRes = await http.delete(`/user/deletePhone?number=${encodeURIComponent(contact.phone)}`);
+
+            wx.hideLoading();
+            if (delRes.code === 1) {
+              const contacts = this.data.device.contacts.filter(c => c.id !== contactId);
+              this.setData({ 'device.contacts': contacts });
+              wx.showToast({ title: '删除成功', icon: 'success' });
+            }
+          } catch (err) {
+            wx.hideLoading();
+            console.error('删除联系人失败：', err);
+          }
         }
       }
     });
@@ -213,10 +227,7 @@ Page({
       content: '确定要解除该设备的绑定吗？',
       success: (res) => {
         if (res.confirm) {
-          const deviceId = this.data.device.id;
-          const devices = wx.getStorageSync('devices') || defaultDevices;
-          const filtered = devices.filter(d => d.id !== deviceId);
-          wx.setStorageSync('devices', filtered);
+          // TODO: 后端暂无解绑接口，仅做前端提示
           wx.showToast({ title: '已解除绑定', icon: 'success' });
           setTimeout(() => {
             wx.navigateBack();

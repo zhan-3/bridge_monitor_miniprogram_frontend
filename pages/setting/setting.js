@@ -1,32 +1,4 @@
-const defaultDevices = [
-  {
-    id: '1',
-    name: '智能烟雾报警器 A1',
-    latitude: 39.9042,
-    longitude: 116.4074,
-    address: '北京市朝阳区建国路88号',
-    status: 'normal',
-    contacts: []
-  },
-  {
-    id: '2',
-    name: '智能燃气探测器 G2',
-    latitude: 39.9088,
-    longitude: 116.3975,
-    address: '北京市东城区王府井大街138号',
-    status: 'alarm',
-    contacts: []
-  },
-  {
-    id: '3',
-    name: '智能门磁感应器 M3',
-    latitude: 39.9140,
-    longitude: 116.4040,
-    address: '北京市西城区西单北大街120号',
-    status: 'offline',
-    contacts: []
-  }
-];
+import http from '../../utils/http';
 
 Page({
   data: {
@@ -53,20 +25,47 @@ Page({
     this.loadLocalSetting();
   },
 
-  loadDevice(deviceId) {
-    const devices = wx.getStorageSync('devices') || defaultDevices;
-    const device = devices.find(d => d.id === deviceId);
-    if (device) {
-      const markers = device.latitude && device.longitude ? [{
-        id: 1,
-        latitude: device.latitude,
-        longitude: device.longitude,
-        iconPath: '/images/map.png',
-        width: 32,
-        height: 32
-      }] : [];
-      this.setData({ device, markers });
+  async loadDevice(deviceId) {
+    const device = {
+      id: deviceId,
+      name: '我的报警器',
+      latitude: 0,
+      longitude: 0,
+      address: '',
+      status: 'normal'
+    };
+
+    // 获取绑定信息
+    try {
+      const bindRes = await http.get('/user/bind/status');
+      if (bindRes.code === 1 && bindRes.data && bindRes.data !== '') {
+        device.name = bindRes.data.deviceName || '我的报警器';
+      }
+    } catch (err) {
+      console.error('获取绑定状态失败：', err);
     }
+
+    // 获取设备GPS位置
+    try {
+      const locRes = await http.get('/user/getLocation');
+      if (locRes.code === 1 && locRes.data) {
+        device.latitude = parseFloat(locRes.data.gpsLat) || 0;
+        device.longitude = parseFloat(locRes.data.gpsLng) || 0;
+      }
+    } catch (err) {
+      console.error('获取设备位置失败：', err);
+    }
+
+    const markers = device.latitude && device.longitude ? [{
+      id: 1,
+      latitude: device.latitude,
+      longitude: device.longitude,
+      iconPath: '/images/map.png',
+      width: 32,
+      height: 32
+    }] : [];
+
+    this.setData({ device, markers });
   },
 
   loadLocalSetting() {
@@ -139,15 +138,6 @@ Page({
         'device.name': tempName.trim(),
         showEditNameModal: false
       });
-      
-      // 持久化到 storage
-      const devices = wx.getStorageSync('devices') || defaultDevices;
-      const index = devices.findIndex(d => d.id === device.id);
-      if (index >= 0) {
-        devices[index] = { ...devices[index], ...this.data.device };
-        wx.setStorageSync('devices', devices);
-      }
-      
       wx.showToast({ title: '名称已修改', icon: 'success' });
     }
   },

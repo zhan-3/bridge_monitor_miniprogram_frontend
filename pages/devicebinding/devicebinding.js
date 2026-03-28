@@ -173,44 +173,35 @@ Page({
     try {
       wx.showLoading({ title: '绑定设备中...', mask: true });
 
-      // 读取用户信息
-      const userId = getStorage('userId', '');
-      const userInfo = getStorage('userInfo', {});
-
-      // 调用后端绑定接口
-      const bindRes = await http.post('/device/bind', {
-        sn,
-        userId,
-        userName: userInfo.nickName || '机主'
+      // 调用后端绑定接口：POST /user/bind/device
+      const bindRes = await http.post('/user/bind/device', {
+        deviceId: sn
       });
 
-      // 接口返回成功：更新本地设备列表
-      if (bindRes.code === 200) {
-        const newDevice = bindRes.data || this.generateTempDevice(sn);
-        const devices = getStorage('devices', []);
-        // 去重：避免重复添加同一设备
-        const isExist = devices.some(item => item.sn === sn);
-        if (!isExist) {
-          devices.push(newDevice);
-          setStorage('devices', devices);
+      // 接口返回成功：code === 1，data为新token（包含deviceId）
+      if (bindRes.code === 1) {
+        // 追加到设备token列表（支持多设备）
+        if (bindRes.data && typeof bindRes.data === 'string') {
+          const app = getApp();
+          app.addDeviceToken(sn, bindRes.data);
         }
 
         wx.showModal({
           title: '绑定成功',
-          content: `设备 "${newDevice.name}" 绑定成功，请到详情页设置安装位置`,
+          content: `设备 "${sn}" 绑定成功`,
           showCancel: false,
           success: () => {
-            wx.navigateBack(); // 返回上一页（设备列表）
+            wx.switchTab({ url: '/pages/home/home' });
           }
         });
       } else {
-        // 接口返回错误（如设备已绑定、SN无效）
+        // 接口返回错误（如设备已被其他用户绑定、设备ID无效）
         wx.showToast({ title: bindRes.msg || '绑定失败', icon: 'none' });
       }
 
     } catch (err) {
       console.error('设备绑定失败：', err);
-      const errMsg = err?.msg || err?.message || '绑定失败，请检查网络或SN码是否正确';
+      const errMsg = err?.msg || err?.message || '绑定失败，请检查网络或设备ID是否正确';
       wx.showToast({ title: errMsg, icon: 'none' });
     } finally {
       this.setData({ isLoading: false });

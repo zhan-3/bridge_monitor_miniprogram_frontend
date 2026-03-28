@@ -17,7 +17,33 @@ function request({ url, method = 'GET', data = {}, header = {} }) {
       },
       timeout: 15000,
       success(res) {
-        const { data } = res
+        const { statusCode, data } = res
+
+        // === HTTP状态码处理 ===
+        if (statusCode === 401) {
+          wx.showModal({
+            content: '登录已失效，请重新登录',
+            showCancel: false,
+            success() {
+              clearStorage()
+              wx.reLaunch({ url: '/pages/login/login' })
+            }
+          })
+          reject({ code: 401, msg: '请提供有效的token' })
+          return
+        }
+
+        if (statusCode === 403) {
+          wx.showModal({
+            content: '请先绑定设备',
+            showCancel: false,
+            success() {
+              wx.navigateTo({ url: '/pages/devicebinding/devicebinding' })
+            }
+          })
+          reject({ code: 403, msg: '请先绑定设备' })
+          return
+        }
 
         // === 业务码处理 ===
         if (!data || typeof data.code === 'undefined') {
@@ -31,23 +57,9 @@ function request({ url, method = 'GET', data = {}, header = {} }) {
           return
         }
 
-        if (data.code === 208) {
-          wx.showModal({
-            content: '登录已失效，请重新登录',
-            showCancel: false,
-            success() {
-              clearStorage()
-              wx.reLaunch({
-                url: '/pages/login/login'
-              })
-            }
-          })
-          reject(data)
-          return
-        }
-
+        // 业务码 0 表示失败
         wx.toast({
-          title: data.message || '请求失败',
+          title: data.msg || data.message || '请求失败',
           icon: 'error'
         })
         reject(data)
