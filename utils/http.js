@@ -2,18 +2,21 @@
 import { getStorage, clearStorage } from './storage'
 import { env } from './env'
 
-function request({ url, method = 'GET', data = {}, header = {} }) {
+function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = false }) {
   return new Promise((resolve, reject) => {
     const token = getStorage('token')
+    const authHeader = header.Authorization || (token ? `Bearer ${token}` : '');
+
+    const fullUrl = env.baseURL + url;
+    console.log('http request:', method, fullUrl, 'data:', data, 'header:', header, 'authHeader:', authHeader, 'token from storage:', token, 'skipAuthCheck:', skipAuthCheck);
 
     wx.request({
-      url: env.baseURL + url,
+      url: fullUrl,
       method,
       data,
       header: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...header
+        ...(authHeader ? { Authorization: authHeader } : {}),
       },
       timeout: 15000,
       success(res) {
@@ -33,14 +36,7 @@ function request({ url, method = 'GET', data = {}, header = {} }) {
           return
         }
 
-        if (statusCode === 403) {
-          wx.showModal({
-            content: '请先绑定设备',
-            showCancel: false,
-            success() {
-              wx.navigateTo({ url: '/pages/devicebinding/devicebinding' })
-            }
-          })
+        if (statusCode === 403 && !skipAuthCheck) {
           reject({ code: 403, msg: '请先绑定设备' })
           return
         }
@@ -80,11 +76,10 @@ export default {
   get(url, data, header) {
     return request({ url, method: 'GET', data, header })
   },
-  post(url, data, header) {
-    return request({ url, method: 'POST', data, header })
+  post(url, data, header, skipAuthCheck = false) {
+    return request({ url, method: 'POST', data, header, skipAuthCheck })
   },
-  // 新增 delete 方法
   delete(url, data, header) {
-    return request({ url, method: 'DELETE', data, header });
+    return request({ url, method: 'DELETE', data, header })
   }
 }

@@ -12,7 +12,8 @@ App({
     hasDeviceBound: false,  // 是否已绑定设备（获取完整token）
     alarmTemplateId: 'LmNsyQCK_araAosSu9UKOyQKnjNMIB1xLU0qGxqIx4o',
     deviceTokens: [],       // [{ sn, token, name }] 所有已绑定设备
-    currentSn: ''           // 当前激活的设备SN
+    currentSn: '',          // 当前激活的设备SN
+    pendingSN: ''           // 扫码待绑定的SN码（跨页面传递用）
   },
 
   setToken(token) {

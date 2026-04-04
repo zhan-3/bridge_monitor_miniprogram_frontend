@@ -11,11 +11,39 @@ Page({
     tempContactPhone: '',
     swipeId: null,
     swipeOffset: 0,
-    touchStartX: 0
+    touchStartX: 0,
+    currentSn: '',
+    currentDeviceToken: ''
   },
 
   onLoad(options) {
-    this.loadDeviceFromAPI();
+    console.log('device-detail onLoad:', options);
+    console.log('device-detail storage token at start:', getStorage('token'));
+    
+    if (options.id) {
+      const app = getApp();
+      console.log('device-detail onLoad options.id:', options.id);
+      console.log('device-detail deviceTokens:', JSON.stringify(app.globalData.deviceTokens));
+      console.log('device-detail currentSn before:', app.globalData.currentSn);
+      
+      app.switchDevice(options.id);
+      
+      console.log('device-detail currentSn after:', app.globalData.currentSn);
+      console.log('device-detail storage token after switch:', getStorage('token'));
+      
+      const currentDeviceToken = app.globalData.deviceTokens.find(d => d.sn === options.id);
+      console.log('device-detail currentDeviceToken:', currentDeviceToken);
+      const authToken = currentDeviceToken ? currentDeviceToken.token : '';
+      console.log('device-detail authToken:', authToken);
+      
+      this.setData({ 
+        currentSn: options.id,
+        currentDeviceToken: authToken
+      });
+    }
+    setTimeout(() => {
+      this.loadDeviceFromAPI();
+    }, 100);
   },
 
   onShow() {
@@ -26,6 +54,10 @@ Page({
 
   // 从后端API加载设备数据（位置+联系人）
   async loadDeviceFromAPI() {
+    const app = getApp();
+    const currentDeviceToken = this.data.currentDeviceToken || (app.globalData.deviceTokens.find(d => d.sn === app.globalData.currentSn) || {}).token || '';
+    const authToken = currentDeviceToken;
+
     const device = {
       id: '1',
       name: '我的报警器',
@@ -38,7 +70,9 @@ Page({
 
     // 获取绑定信息
     try {
-      const bindRes = await http.get('/user/bind/status');
+      const bindRes = await http.get('/user/bind/status', {}, {
+        Authorization: `Bearer ${authToken}`
+      });
       if (bindRes.code === 1 && bindRes.data && bindRes.data !== '') {
         device.name = bindRes.data.deviceName || '我的报警器';
       }
@@ -48,7 +82,9 @@ Page({
 
     // 获取设备GPS位置
     try {
-      const locRes = await http.get('/user/getLocation');
+      const locRes = await http.get('/user/getLocation', {}, {
+        Authorization: `Bearer ${authToken}`
+      });
       if (locRes.code === 1 && locRes.data) {
         device.latitude = parseFloat(locRes.data.gpsLat) || 39.9042;
         device.longitude = parseFloat(locRes.data.gpsLng) || 116.4074;
@@ -59,7 +95,9 @@ Page({
 
     // 获取紧急联系人列表
     try {
-      const phoneRes = await http.get('/user/userGetPhone');
+      const phoneRes = await http.get('/user/userGetPhone', {}, {
+        Authorization: `Bearer ${authToken}`
+      });
       if (phoneRes.code === 1 && Array.isArray(phoneRes.data)) {
         device.contacts = phoneRes.data.map((item, index) => ({
           id: 'c' + index,
@@ -168,7 +206,11 @@ Page({
 
     try {
       wx.showLoading({ title: '添加中...' });
-      const res = await http.post('/user/addPhoneNumber', { number: tempContactPhone, name: tempContactName });
+      const authToken = this.data.currentDeviceToken;
+      
+      const res = await http.post('/user/addPhoneNumber', { number: tempContactPhone, name: tempContactName }, {
+        Authorization: `Bearer ${authToken}`
+      });
 
       wx.hideLoading();
       if (res.code === 1) {
@@ -203,8 +245,11 @@ Page({
         if (res.confirm) {
           try {
             wx.showLoading({ title: '删除中...' });
-            // 调用后端接口删除紧急联系人（API要求query参数）
-            const delRes = await http.delete(`/user/deletePhone?number=${encodeURIComponent(contact.phone)}`);
+            const authToken = this.data.currentDeviceToken;
+            
+            const delRes = await http.delete(`/user/deletePhone?number=${encodeURIComponent(contact.phone)}`, {}, {
+              Authorization: `Bearer ${authToken}`
+            });
 
             wx.hideLoading();
             if (delRes.code === 1) {

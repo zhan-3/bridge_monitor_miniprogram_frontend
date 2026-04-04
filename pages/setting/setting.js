@@ -26,6 +26,10 @@ Page({
   },
 
   async loadDevice(deviceId) {
+    const app = getApp();
+    const currentDeviceToken = app.globalData.deviceTokens.find(d => d.sn === deviceId);
+    const authToken = currentDeviceToken ? currentDeviceToken.token : '';
+
     const device = {
       id: deviceId,
       name: '我的报警器',
@@ -37,7 +41,9 @@ Page({
 
     // 获取绑定信息
     try {
-      const bindRes = await http.get('/user/bind/status');
+      const bindRes = await http.get('/user/bind/status', {}, {
+        Authorization: `Bearer ${authToken}`
+      });
       if (bindRes.code === 1 && bindRes.data && bindRes.data !== '') {
         device.name = bindRes.data.deviceName || '我的报警器';
       }
@@ -47,7 +53,9 @@ Page({
 
     // 获取设备GPS位置
     try {
-      const locRes = await http.get('/user/getLocation');
+      const locRes = await http.get('/user/getLocation', {}, {
+        Authorization: `Bearer ${authToken}`
+      });
       if (locRes.code === 1 && locRes.data) {
         device.latitude = parseFloat(locRes.data.gpsLat) || 0;
         device.longitude = parseFloat(locRes.data.gpsLng) || 0;

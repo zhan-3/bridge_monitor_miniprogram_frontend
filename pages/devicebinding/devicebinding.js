@@ -19,17 +19,28 @@ Page({
   },
 
   onLoad(options) {
-    // 1. 校验用户登录态（读取缓存中的isLogin）
+    let deviceSN = '';
+
+    if (options.scene) {
+      // 从小程序码扫码进入（scene参数）
+      deviceSN = decodeURIComponent(options.scene);
+    } else if (options.sn) {
+      // 从登录页跳转回来（sn参数）
+      deviceSN = decodeURIComponent(options.sn);
+    }
+
+    if (deviceSN) {
+      this.setData({ deviceSN });
+      // 在可能跳转登录前先保存SN，防止页面跳转后丢失
+      getApp().globalData.pendingSN = deviceSN;
+    }
+
+    // 校验用户登录态
     this.checkLoginStatus();
 
-    // 2. 解析scene参数（扫码跳转进入时）
-    if (options.scene) {
-      const deviceSN = decodeURIComponent(options.scene);
-      this.setData({ deviceSN });
-      // 自动触发绑定流程（登录态校验通过后）
-      if (this.data.isLogin && deviceSN) {
-        this.autoBindDevice(deviceSN);
-      }
+    // 已登录且有SN码时自动触发绑定流程
+    if (this.data.isLogin && deviceSN) {
+      this.autoBindDevice(deviceSN);
     }
   },
 
@@ -184,6 +195,7 @@ Page({
         if (bindRes.data && typeof bindRes.data === 'string') {
           const app = getApp();
           app.addDeviceToken(sn, bindRes.data);
+          app.globalData.pendingSN = '';  // 清除待绑定SN
         }
 
         wx.showModal({
