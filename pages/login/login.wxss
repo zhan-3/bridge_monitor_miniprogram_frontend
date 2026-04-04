@@ -122,3 +122,77 @@
   color: rgba(255, 255, 255, 0.8);
   text-align: center;
 }
+
+/* 手机号弹窗 */
+.phone-modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+}
+
+.phone-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px;
+  z-index: 101;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.modal-desc {
+  font-size: 13px;
+  color: #999;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.modal-input {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 15px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+
+.modal-btns {
+  display: flex;
+  margin-top: 20px;
+}
+
+.modal-btn {
+  flex: 1;
+  height: 40px;
+  border-radius: 20px;
+  font-size: 15px;
+  border: none;
+}
+
+.modal-btn.cancel {
+  background: #f5f5f5;
+  color: #666;
+  margin-right: 10px;
+}
+
+.modal-btn.confirm {
+  background: #FF7A00;
+  color: #fff;
+  margin-left: 10px;
+}

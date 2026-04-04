@@ -13,12 +13,12 @@
     <view class="step-line {{step >= 2 ? 'active' : ''}}"></view>
     <view class="step-item {{step >= 2 ? 'active' : ''}}">
       <view class="step-num">2</view>
-      <text class="step-text">授权信息</text>
+      <text class="step-text">填写手机</text>
     </view>
     <view class="step-line {{step >= 3 ? 'active' : ''}}"></view>
     <view class="step-item {{step >= 3 ? 'active' : ''}}">
       <view class="step-num">3</view>
-      <text class="step-text">验证手机</text>
+      <text class="step-text">授权信息</text>
     </view>
   </view>
 
@@ -31,27 +31,44 @@
     </block>
 
     <block wx:elif="{{step === 2}}">
-      <button class="login-btn" bindtap="getUserInfo">
-        <text class="btn-icon">👤</text>
-        <text class="btn-text">授权头像昵称</text>
+      <button 
+        class="login-btn primary" 
+        bindtap="showPhoneModal"
+      >
+        <text class="btn-icon">📱</text>
+        <text class="btn-text">填写手机号</text>
       </button>
     </block>
 
     <block wx:elif="{{step === 3}}">
-      <button 
-        class="login-btn primary" 
-        open-type="getPhoneNumber" 
-        bindgetphonenumber="onGetPhoneNumber"
-      >
-        <text class="btn-icon">📱</text>
-        <text class="btn-text">授权手机号</text>
+      <button class="login-btn" bindtap="getUserInfo">
+        <text class="btn-icon">👤</text>
+        <text class="btn-text">授权头像昵称</text>
       </button>
     </block>
   </view>
 
   <view class="step-hint">
     <text wx:if="{{step === 1}}">点击上方按钮进行微信登录</text>
-    <text wx:elif="{{step === 2}}">授权后可完善您的个人资料</text>
-    <text wx:elif="{{step === 3}}">授权手机号用于接收报警通知</text>
+    <text wx:elif="{{step === 2}}">填写手机号用于接收报警通知</text>
+    <text wx:elif="{{step === 3}}">授权后可完善您的个人资料</text>
+  </view>
+
+  <!-- 手机号输入弹窗 -->
+  <view class="phone-modal-mask" wx:if="{{showPhoneModal}}"></view>
+  <view class="phone-modal" wx:if="{{showPhoneModal}}">
+    <view class="modal-title">填写手机号</view>
+    <view class="modal-desc">手机号将作为紧急联系人，报警时自动呼叫</view>
+    <input 
+      class="modal-input" 
+      type="number" 
+      maxlength="11" 
+      placeholder="请输入手机号" 
+      bindinput="onPhoneInput"
+    />
+    <view class="modal-btns">
+      <button class="modal-btn cancel" bindtap="hidePhoneModal">取消</button>
+      <button class="modal-btn confirm" bindtap="confirmPhone">确定</button>
+    </view>
   </view>
 </view>

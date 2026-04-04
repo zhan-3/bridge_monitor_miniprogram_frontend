@@ -5,6 +5,8 @@ import http from '../../utils/http'
 Page({
   data: {
     step: 1,
+    showPhoneModal: false,
+    phone: ''
   },
 
   onLoad() {
@@ -39,7 +41,6 @@ Page({
             this.setData({ step: 3 });
           }
         } else {
-          // 未填写资料，进入第2步
           this.setData({ step: 2 });
         }
       }
@@ -89,7 +90,6 @@ Page({
       wx.hideLoading();
       wx.showToast({ title: '登录成功', icon: 'success' });
       this.setData({ step: 2 });
-
     } catch (err) {
       wx.hideLoading();
       console.error('登录失败：', err);
@@ -156,13 +156,75 @@ Page({
 
   // 第3步：引导用户去绑定设备
   goBindDevice() {
-    wx.navigateTo({
-      url: '/pages/devicebinding/devicebinding'
-    });
+    const app = getApp();
+    const pendingSN = app.globalData.pendingSN || '';
+    const url = pendingSN
+      ? `/pages/devicebinding/devicebinding?sn=${encodeURIComponent(pendingSN)}`
+      : '/pages/devicebinding/devicebinding';
+    wx.navigateTo({ url });
   },
 
   // 跳过绑定，直接进入首页（部分功能受限）
   skipBind() {
     wx.switchTab({ url: '/pages/home/home' });
+  },
+
+  showPhoneModal() {
+    this.setData({ showPhoneModal: true });
+  },
+
+  hidePhoneModal() {
+    this.setData({ 
+      showPhoneModal: false,
+      phone: ''
+    });
+  },
+
+  onPhoneInput(e) {
+    this.setData({ phone: e.detail.value });
+  },
+
+  async confirmPhone() {
+    const { phone } = this.data;
+    
+    if (!phone || phone.length !== 11) {
+      wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
+      return;
+    }
+
+    const token = getStorage('token');
+    if (!token) {
+      wx.showToast({ title: '请先完成登录', icon: 'error' });
+      return;
+    }
+
+    try {
+      wx.showLoading({ title: '保存中...' });
+      
+      const res = await http.post('/user/userBindPhone?phone=' + phone, {}, {
+        Authorization: `Bearer ${token}`
+      }, true);
+
+      wx.hideLoading();
+
+      if (res.code !== 1) {
+        wx.showToast({ title: res.msg || '保存失败', icon: 'none' });
+        return;
+      }
+
+      const userInfo = getStorage('userInfo') || {};
+      userInfo.phone = phone;
+      setStorage('userInfo', userInfo);
+      setStorage('phone', phone);
+
+      wx.showToast({ title: '保存成功', icon: 'success' });
+      
+      this.setData({ showPhoneModal: false, step: 3 });
+      
+    } catch (err) {
+      wx.hideLoading();
+      console.error('保存手机号失败：', err);
+      wx.showToast({ title: '网络异常，请重试', icon: 'none' });
+    }
   }
 });
