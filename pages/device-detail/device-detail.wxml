@@ -65,8 +65,10 @@
       </view>
     </block>
 
-    <view wx:if="{{device.contacts.length === 0}}" class="empty">
-      暂无紧急联系人
+    <view wx:if="{{device.contacts.length === 0}}" class="empty-state">
+      <text class="empty-icon">📵</text>
+      <text class="empty-text">暂无紧急联系人</text>
+      <text class="empty-hint">点击右上角「＋」添加联系人</text>
     </view>
   </white-card>
 

@@ -28,8 +28,15 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
             content: '登录已失效，请重新登录',
             showCancel: false,
             success() {
-              clearStorage()
-              wx.reLaunch({ url: '/pages/login/login' })
+              clearStorage();
+              const app = getApp();
+              app.globalData.token = '';
+              app.globalData.hasBaseLogin = false;
+              app.globalData.hasDeviceBound = false;
+              app.globalData.deviceTokens = [];
+              app.globalData.currentSn = '';
+              app.globalData.pendingSN = '';
+              wx.reLaunch({ url: '/pages/login/login' });
             }
           })
           reject({ code: 401, msg: '请提供有效的token' })

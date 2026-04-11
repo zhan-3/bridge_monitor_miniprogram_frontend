@@ -1,4 +1,4 @@
-import http from '../../utils/http';
+import { loadDeviceData, buildMarkers } from '../../utils/deviceService';
 
 Page({
   data: {
@@ -27,51 +27,11 @@ Page({
 
   async loadDevice(deviceId) {
     const app = getApp();
-    const currentDeviceToken = app.globalData.deviceTokens.find(d => d.sn === deviceId);
-    const authToken = currentDeviceToken ? currentDeviceToken.token : '';
+    const deviceEntry = app.globalData.deviceTokens.find(d => d.sn === deviceId);
+    const authToken = deviceEntry ? deviceEntry.token : '';
 
-    const device = {
-      id: deviceId,
-      name: '我的报警器',
-      latitude: 0,
-      longitude: 0,
-      address: '',
-      status: 'normal'
-    };
-
-    // 获取绑定信息
-    try {
-      const bindRes = await http.get('/user/bind/status', {}, {
-        Authorization: `Bearer ${authToken}`
-      });
-      if (bindRes.code === 1 && bindRes.data && bindRes.data !== '') {
-        device.name = bindRes.data.deviceName || '我的报警器';
-      }
-    } catch (err) {
-      console.error('获取绑定状态失败：', err);
-    }
-
-    // 获取设备GPS位置
-    try {
-      const locRes = await http.get('/user/getLocation', {}, {
-        Authorization: `Bearer ${authToken}`
-      });
-      if (locRes.code === 1 && locRes.data) {
-        device.latitude = parseFloat(locRes.data.gpsLat) || 0;
-        device.longitude = parseFloat(locRes.data.gpsLng) || 0;
-      }
-    } catch (err) {
-      console.error('获取设备位置失败：', err);
-    }
-
-    const markers = device.latitude && device.longitude ? [{
-      id: 1,
-      latitude: device.latitude,
-      longitude: device.longitude,
-      iconPath: '/images/map.png',
-      width: 32,
-      height: 32
-    }] : [];
+    const device = await loadDeviceData(deviceId, authToken);
+    const markers = buildMarkers(device);
 
     this.setData({ device, markers });
   },

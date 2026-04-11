@@ -148,9 +148,25 @@
   color: #ccc;
 }
 
-.empty {
-  text-align: center;
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 30px 20px;
+}
+
+.empty-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.empty-text {
+  font-size: 15px;
   color: #999;
-  padding: 20px;
-  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.empty-hint {
+  font-size: 12px;
+  color: #bbb;
 }

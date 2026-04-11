@@ -1,4 +1,7 @@
 import http from '../../utils/http';
+import { getStorage } from '../../utils/storage';
+import { loadDeviceData, loadDeviceContacts, buildMarkers } from '../../utils/deviceService';
+import { DEVICE_STATUS_MAP } from '../../utils/constants';
 
 Page({
   data: {
@@ -17,124 +20,35 @@ Page({
   },
 
   onLoad(options) {
-    console.log('device-detail onLoad:', options);
-    console.log('device-detail storage token at start:', getStorage('token'));
-    
     if (options.id) {
       const app = getApp();
-      console.log('device-detail onLoad options.id:', options.id);
-      console.log('device-detail deviceTokens:', JSON.stringify(app.globalData.deviceTokens));
-      console.log('device-detail currentSn before:', app.globalData.currentSn);
-      
       app.switchDevice(options.id);
-      
-      console.log('device-detail currentSn after:', app.globalData.currentSn);
-      console.log('device-detail storage token after switch:', getStorage('token'));
-      
-      const currentDeviceToken = app.globalData.deviceTokens.find(d => d.sn === options.id);
-      console.log('device-detail currentDeviceToken:', currentDeviceToken);
-      const authToken = currentDeviceToken ? currentDeviceToken.token : '';
-      console.log('device-detail authToken:', authToken);
-      
-      this.setData({ 
+      const deviceEntry = app.globalData.deviceTokens.find(d => d.sn === options.id);
+      const authToken = deviceEntry ? deviceEntry.token : '';
+      this.setData({
         currentSn: options.id,
         currentDeviceToken: authToken
       });
     }
-    setTimeout(() => {
-      this.loadDeviceFromAPI();
-    }, 100);
+    // 直接加载，无需延迟
+    this.loadDeviceFromAPI();
   },
 
   onShow() {
+    // 从子页面返回时刷新数据（如设置页修改了设备名）
     if (this.data.device) {
       this.loadDeviceFromAPI();
     }
   },
 
-  // 从后端API加载设备数据（位置+联系人）
+  // 从后端API加载设备数据（使用 deviceService 统一逻辑）
   async loadDeviceFromAPI() {
-    const app = getApp();
-    const currentDeviceToken = this.data.currentDeviceToken || (app.globalData.deviceTokens.find(d => d.sn === app.globalData.currentSn) || {}).token || '';
-    const authToken = currentDeviceToken;
+    const authToken = this.data.currentDeviceToken;
+    const currentSn = this.data.currentSn;
 
-    const device = {
-      id: '1',
-      name: '我的报警器',
-      status: 'normal',
-      latitude: 39.9042,
-      longitude: 116.4074,
-      address: '设备位置',
-      contacts: []
-    };
-
-    // 获取绑定信息
-    try {
-      const bindRes = await http.get('/user/bind/status', {}, {
-        Authorization: `Bearer ${authToken}`
-      });
-      if (bindRes.code === 1 && bindRes.data && bindRes.data !== '') {
-        device.name = bindRes.data.deviceName || '我的报警器';
-      }
-    } catch (err) {
-      console.error('获取绑定状态失败：', err);
-    }
-
-    // 获取设备GPS位置
-    try {
-      const locRes = await http.get('/user/getLocation', {}, {
-        Authorization: `Bearer ${authToken}`
-      });
-      if (locRes.code === 1 && locRes.data) {
-        device.latitude = parseFloat(locRes.data.gpsLat) || 39.9042;
-        device.longitude = parseFloat(locRes.data.gpsLng) || 116.4074;
-      }
-    } catch (err) {
-      console.error('获取设备位置失败：', err);
-    }
-
-    // 获取紧急联系人列表
-    try {
-      const phoneRes = await http.get('/user/userGetPhone', {}, {
-        Authorization: `Bearer ${authToken}`
-      });
-      if (phoneRes.code === 1 && Array.isArray(phoneRes.data)) {
-        device.contacts = phoneRes.data.map((item, index) => ({
-          id: 'c' + index,
-          name: item.name,
-          phone: item.phone
-        }));
-      }
-    } catch (err) {
-      console.error('获取联系人失败：', err);
-    }
-
-    // 设置地图标记
-    const lat = Number(device.latitude);
-    const lng = Number(device.longitude);
-    const markers = [{
-      id: 1,
-      latitude: lat,
-      longitude: lng,
-      snippet: device.address || '未知地址',
-      iconPath: '/images/marker-emergency.png',
-      width: 32,
-      height: 42,
-      callout: {
-        content: [
-          device.name,
-          device.status === 'alarm' ? '警报中' : '正常',
-          device.address || '未知地址'
-        ].filter(Boolean).join('\n'),
-        display: 'BYCLICK',
-        fontSize: 12,
-        bgColor: device.status === 'alarm' ? '#dc143c' : '#52c41a',
-        color: '#fff',
-        padding: 8,
-        borderRadius: 4
-      },
-      animation: true
-    }];
+    const device = await loadDeviceData(currentSn, authToken);
+    device.contacts = await loadDeviceContacts(authToken);
+    const markers = buildMarkers(device);
 
     this.setData({ device, markers });
   },
@@ -307,8 +221,13 @@ Page({
   },
 
   goSetting() {
+    const deviceId = this.data.device && this.data.device.id;
+    if (!deviceId) {
+      wx.showToast({ title: '设备信息加载中', icon: 'none' });
+      return;
+    }
     wx.navigateTo({
-      url: `/pages/setting/setting?id=${this.data.device.id}`
+      url: `/pages/setting/setting?id=${encodeURIComponent(deviceId)}`
     });
   },
 

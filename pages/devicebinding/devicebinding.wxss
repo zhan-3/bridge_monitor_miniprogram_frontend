@@ -251,6 +251,21 @@
   background: var(--orange-dark);
 }
 
+.modal-input.input-error {
+  border-color: #ff4d4f;
+}
+
+.input-error-tip {
+  font-size: 12px;
+  color: #ff4d4f;
+  margin-top: 4px;
+  display: block;
+}
+
+.modal-btn.btn-disabled {
+  background: #ccc !important;
+}
+
 /* 动画 */
 @keyframes maskFadeIn {
   from { opacity: 0; }

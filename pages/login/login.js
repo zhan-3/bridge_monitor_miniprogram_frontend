@@ -1,12 +1,14 @@
 // pages/login/login.js
 import { setStorage, getStorage } from '../../utils/storage'
 import http from '../../utils/http'
+import { isValidPhone } from '../../utils/validators'
 
 Page({
   data: {
     step: 1,
     showPhoneModal: false,
-    phone: ''
+    phone: '',
+    phoneError: false   // 手机号格式错误提示
   },
 
   onLoad() {
@@ -174,21 +176,27 @@ Page({
   },
 
   hidePhoneModal() {
-    this.setData({ 
+    this.setData({
       showPhoneModal: false,
-      phone: ''
+      phone: '',
+      phoneError: false
     });
   },
 
   onPhoneInput(e) {
-    this.setData({ phone: e.detail.value });
+    const phone = e.detail.value;
+    this.setData({
+      phone,
+      phoneError: phone.length > 0 && !isValidPhone(phone)
+    });
   },
 
   async confirmPhone() {
     const { phone } = this.data;
-    
-    if (!phone || phone.length !== 11) {
+
+    if (!isValidPhone(phone)) {
       wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
+      this.setData({ phoneError: true });
       return;
     }
 

@@ -1,6 +1,6 @@
 import http from '../../utils/http';
-// 正确解构导入缓存工具类
 import { getStorage, setStorage } from '../../utils/storage';
+import { isValidSN } from '../../utils/validators';
 
 const deviceTemplates = [
   { name: '烟雾报警器', prefix: 'YW' },
@@ -13,9 +13,10 @@ Page({
   data: {
     showManualBind: false,
     inputSN: '',
+    snError: false,    // SN码格式错误提示
     isLoading: false,
     deviceSN: '',
-    isLogin: false // 页面初始登录态
+    isLogin: false
   },
 
   onLoad(options) {
@@ -127,19 +128,27 @@ Page({
   },
 
   /**
-   * 输入SN码
+   * 输入SN码（实时格式验证）
    */
   onInputSN(e) {
-    this.setData({ inputSN: e.detail.value.trim().toUpperCase() });
+    const sn = e.detail.value.trim().toUpperCase();
+    this.setData({
+      inputSN: sn,
+      snError: sn.length > 0 && !isValidSN(sn)
+    });
   },
 
   /**
    * 确认手动绑定
    */
   confirmBind() {
-    const { inputSN } = this.data;
+    const { inputSN, snError } = this.data;
     if (!inputSN) {
       wx.showToast({ title: '请输入设备SN码', icon: 'none' });
+      return;
+    }
+    if (snError || !isValidSN(inputSN)) {
+      wx.showToast({ title: 'SN码格式错误', icon: 'none' });
       return;
     }
 

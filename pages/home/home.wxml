@@ -40,8 +40,10 @@
       </view>
     </block>
 
-    <view wx:if="{{devices.length === 0}}" class="empty">
-      暂未绑定设备
+    <view wx:if="{{devices.length === 0}}" class="empty-state">
+      <text class="empty-icon">📭</text>
+      <text class="empty-text">暂未绑定设备</text>
+      <text class="empty-hint">点击右上角「＋」添加设备</text>
     </view>
   </white-card>
 </view>

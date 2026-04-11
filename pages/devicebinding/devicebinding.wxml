@@ -41,19 +41,20 @@
     </view>
     <!-- 输入框 -->
     <view class="modal-body">
-      <input 
-        class="modal-input" 
-        type="text" 
-        placeholder="请输入设备SN码（20位以内）" 
+      <input
+        class="modal-input {{snError ? 'input-error' : ''}}"
+        type="text"
+        placeholder="请输入设备SN码（大写字母+数字，20位以内）"
         bindinput="onInputSN"
         value="{{inputSN}}"
         maxlength="20"
       />
+      <text wx:if="{{snError}}" class="input-error-tip">SN码只能包含大写字母和数字</text>
     </view>
     <!-- 按钮组 -->
     <view class="modal-footer">
       <button class="modal-btn cancel" bindtap="closeManualBind">取消</button>
-      <button class="modal-btn confirm" bindtap="confirmBind" loading="{{isLoading}}">确认绑定</button>
+      <button class="modal-btn confirm {{snError ? 'btn-disabled' : ''}}" bindtap="confirmBind" loading="{{isLoading}}" disabled="{{snError}}">确认绑定</button>
     </view>
   </view>
 </view>
