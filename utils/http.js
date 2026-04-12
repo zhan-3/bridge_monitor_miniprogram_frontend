@@ -1,10 +1,35 @@
 // utils/http.js
-import { getStorage, clearStorage } from './storage'
+import { getStorage, clearStorage, setStorage } from './storage'
 import { env } from './env'
+
+function isValidToken(token) {
+  if (!token || typeof token !== 'string') return false
+  return !/[\u4e00-\u9fa5]/.test(token)
+}
 
 function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = false }) {
   return new Promise((resolve, reject) => {
-    const token = getStorage('token')
+    let token = getStorage('token')
+    
+    if (token && !isValidToken(token)) {
+      console.error('检测到无效token（包含非ASCII字符），清除并重新登录')
+      clearStorage()
+      const app = getApp()
+      app.globalData.token = ''
+      app.globalData.hasBaseLogin = false
+      app.globalData.hasDeviceBound = false
+      app.globalData.deviceTokens = []
+      app.globalData.currentSn = ''
+      wx.modal({
+        content: '登录状态异常，请重新登录',
+        showCancel: false
+      }).then(() => {
+        wx.reLaunch({ url: '/pages/login/login' })
+      })
+      reject({ code: -1, msg: '无效token' })
+      return
+    }
+
     const authHeader = header.Authorization || (token ? `Bearer ${token}` : '');
 
     const fullUrl = env.baseURL + url;
@@ -24,20 +49,19 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
 
         // === HTTP状态码处理 ===
         if (statusCode === 401) {
-          wx.showModal({
+          wx.modal({
             content: '登录已失效，请重新登录',
-            showCancel: false,
-            success() {
-              clearStorage();
-              const app = getApp();
-              app.globalData.token = '';
-              app.globalData.hasBaseLogin = false;
-              app.globalData.hasDeviceBound = false;
-              app.globalData.deviceTokens = [];
-              app.globalData.currentSn = '';
-              app.globalData.pendingSN = '';
-              wx.reLaunch({ url: '/pages/login/login' });
-            }
+            showCancel: false
+          }).then(() => {
+            clearStorage();
+            const app = getApp();
+            app.globalData.token = '';
+            app.globalData.hasBaseLogin = false;
+            app.globalData.hasDeviceBound = false;
+            app.globalData.deviceTokens = [];
+            app.globalData.currentSn = '';
+            app.globalData.pendingSN = '';
+            wx.reLaunch({ url: '/pages/login/login' });
           })
           reject({ code: 401, msg: '请提供有效的token' })
           return

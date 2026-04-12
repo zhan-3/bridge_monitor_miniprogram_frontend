@@ -1,6 +1,5 @@
 import { setStorage, getStorage } from '../../utils/storage'
-import http from '../../utils/http' 
-import AudioManager from '../../miniprogram_npm/wx-audio-manager/index';
+import http from '../../utils/http'
 
 Page({
   data: {
@@ -55,9 +54,9 @@ Page({
     this.timer && clearInterval(this.timer);
     this.clearProgressTimer();
     this.loadTimeoutTimer && clearTimeout(this.loadTimeoutTimer);
-    // 销毁NPM包的音频管理器（替换原生destroy）
+    // 销毁音频管理器
     if (this.data.audioManager) {
-      this.data.audioManager.destroy();
+      try { this.data.audioManager.destroy(); } catch (e) { /* noop */ }
       this.setData({ audioManager: null });
     }
   },
@@ -80,56 +79,50 @@ Page({
   setSpeed(e) {
     const rate = parseFloat(e.currentTarget.dataset.rate);
     this.setData({ playbackRate: rate });
-    // 适配NPM包的倍速设置
+    // InnerAudioContext的倍速设置
     if (this.data.audioManager) {
       this.data.audioManager.setPlaybackRate(rate);
     }
   },
 
-  // 初始化NPM包的音频管理器
+  // 初始化音频管理器（基于 InnerAudioContext 封装统一接口）
   initAudioManager() {
-    try {
-      // 创建NPM包实例绑定波形Canvas）
-      const audioManager = new AudioManager({
-        waveform: {
-          el: '#waveformCanvas', // 匹配WXML中的Canvas ID
-          color: '#FF7A00',      // 波形颜色
-          barCount: 50,          // 波形柱数量
-          height: 120,           // 波形高度（适配UI）
-          enable: true,
-          type: '2d'             // 适配Canvas 2D
-        },
-        autoplay: false,
-        volume: 1,
-        obeyMuteSwitch: false    // 保留你原有的静音开关逻辑
-      });
-      
-      this.setData({ audioManager });
-      console.log('✅ NPM包音频管理器初始化成功');
-    } catch (err) {
-      console.error('❌ NPM包音频管理器创建失败', err);
-      wx.showToast({ title: '音频服务初始化失败', icon: 'error', duration: 3000 });
-      // 兜底：降级为原生（防止NPM包加载失败）
-      const fallbackAudio = wx.createInnerAudioContext();
-      fallbackAudio.obeyMuteSwitch = false;
-      fallbackAudio.volume = 1;
-      this.setData({ 
-        audioManager: {
-          play: () => fallbackAudio.play(),
-          pause: () => fallbackAudio.pause(),
-          stop: () => fallbackAudio.stop(),
-          seek: (time) => fallbackAudio.seek(time),
-          setPlaybackRate: (rate) => { fallbackAudio.playbackRate = rate; },
-          getDuration: () => fallbackAudio.duration || 0,
-          getCurrentTime: () => fallbackAudio.currentTime || 0,
-          destroy: () => fallbackAudio.destroy(),
-          load: (url) => { fallbackAudio.src = url; },
-          on: (evt, cb) => fallbackAudio[`on${evt}`](cb),
-          off: (evt, cb) => fallbackAudio[`off${evt}`](cb),
-          duration: 0
+    const innerAudio = wx.createInnerAudioContext();
+    innerAudio.obeyMuteSwitch = false;
+    innerAudio.volume = 1;
+
+    // 事件名首字母大写，匹配微信 API：on + 'Play' = 'onPlay'
+    const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+    const audioManager = {
+      _ctx: innerAudio,
+      play:            () => innerAudio.play(),
+      pause:           () => innerAudio.pause(),
+      stop:            () => innerAudio.stop(),
+      seek:            (time) => innerAudio.seek(time),
+      setPlaybackRate: (rate) => { innerAudio.playbackRate = rate; },
+      getDuration:     () => innerAudio.duration || 0,
+      getCurrentTime:  () => innerAudio.currentTime || 0,
+      destroy:         () => innerAudio.destroy(),
+      load:            (url) => { innerAudio.src = url; },
+      on: (evt, cb) => {
+        const method = 'on' + capitalize(evt);
+        if (typeof innerAudio[method] === 'function') {
+          innerAudio[method](cb);
+        } else {
+          console.warn('[audioManager] 不支持的事件:', evt);
         }
-      });
-    }
+      },
+      off: (evt, cb) => {
+        const method = 'off' + capitalize(evt);
+        if (typeof innerAudio[method] === 'function') {
+          innerAudio[method](cb);
+        }
+      }
+    };
+
+    this.setData({ audioManager });
+    console.log('✅ 音频管理器初始化成功（InnerAudioContext）');
   },
 
   // ========== 完全保留你原有的数据处理/接口逻辑 ==========
@@ -151,7 +144,7 @@ Page({
       .then(res => {
         if ( res.code !== 1) {
           const errMsg = res.msg || '获取数据失败';
-          res.code !== 200 && wx.showToast({ title: errMsg, icon: 'error', duration: 2000 });
+          res.code !== 200 && wx.toast({ title: errMsg, icon: 'error', duration: 2000 });
           return;
         }
         
@@ -190,7 +183,7 @@ Page({
       })
       .catch(err => {
         console.error('❌ 网络请求失败：', err.errMsg);
-        wx.showToast({ title: '网络异常，检查后端', icon: 'none', duration: 3000 });
+        wx.toast({ title: '网络异常，检查后端', icon: 'none', duration: 3000 });
       });
   },
 
@@ -281,13 +274,14 @@ Page({
     this.hideActionMenu();
   },
 
-  // 音频事件监听（替换原生事件为NPM包事件）
+  // 音频事件监听
   setupAudioListeners() {
     const audioManager = this.data.audioManager;
     if (!audioManager) return;
 
-    // 错误监听（适配NPM包事件）
+    // 错误监听
     audioManager.on('error', (err) => {
+      err = err || {};
       console.error('❌ 音频错误：', err);
       const errMsgMap = {
         10001: '系统错误（音频服务异常）',
@@ -299,24 +293,24 @@ Page({
       const errCode = err.errCode || err.code || -1;
       const errMsg = errMsgMap[errCode] || `未知错误（错误码：${errCode}）`;
 
-      wx.showToast({ title: errMsg, icon: 'none', duration: 3000 });
+      wx.toast({ title: errMsg, icon: 'none', duration: 3000 });
       this.resetPlayState(true);
       this.setData({ currentTime: '00:00', progress: 0 });
     });
 
-    // 播放监听（适配NPM包事件）
+    // 播放监听（InnerAudioContext）
     audioManager.on('play', () => {
       this.setData({ isPlaying: true, playState: 'play' });
       this.startProgressTimer();
     });
 
-    // 暂停监听（适配NPM包事件）
+    // 暂停监听（InnerAudioContext）
     audioManager.on('pause', () => {
       this.setData({ isPlaying: false, playState: 'pause' });
       this.clearProgressTimer();
     });
 
-    // 停止监听（适配NPM包事件）
+    // 停止监听（InnerAudioContext）
     audioManager.on('stop', () => {
       this.setData({ 
         isPlaying: false,
@@ -327,20 +321,22 @@ Page({
       this.clearProgressTimer();
     });
 
-    // 进度更新（适配NPM包事件）
-    audioManager.on('timeUpdate', (res) => {
-      if (this.data.isDragging || !res.duration) return;
-      const progress = (res.currentTime / res.duration) * 100;
-      const currentTime = this.formatTime(res.currentTime);
-      this.setData({ 
+    // 进度更新（InnerAudioContext 的 onTimeUpdate 回调无参数，需从实例读取）
+    audioManager.on('timeUpdate', () => {
+      const curTime = audioManager.getCurrentTime();
+      const dur = audioManager.getDuration();
+      if (this.data.isDragging || !dur) return;
+      const progress = (curTime / dur) * 100;
+      const currentTime = this.formatTime(curTime);
+      this.setData({
         progress,
         currentTime,
-        audioTotalTime: Math.floor(res.duration),
-        formatTotal: this.formatTime(res.duration)
+        audioTotalTime: Math.floor(dur),
+        formatTotal: this.formatTime(dur)
       });
     });
 
-    // 播放结束（适配NPM包事件）
+    // 播放结束（InnerAudioContext）
     audioManager.on('ended', () => {
       this.setData({ 
         isPlaying: false,
@@ -393,10 +389,10 @@ Page({
     setTimeout(() => wx.hideLoading(), 1000);
   },
 
-  // ========== 适配：播放/暂停切换（适配NPM包方法） ==========
+  // ========== 适配：播放/暂停切换（InnerAudioContext方法） ==========
   togglePlay() {
     if (!this.data.currentAudio || !this.data.audioManager) {
-      wx.showToast({ title: '暂无可播放音频', icon: 'none' }); 
+      wx.toast({ title: '暂无可播放音频', icon: 'none' }); 
       return;
     }
 
@@ -416,11 +412,11 @@ Page({
       }
       this.loadTimeoutTimer = setTimeout(() => {
         wx.hideLoading();
-        wx.showToast({ title: '音频加载超时，请检查网络', icon: 'none' });
+        wx.toast({ title: '音频加载超时，请检查网络', icon: 'none' });
         this.resetPlayState(true);
       }, 20000);
 
-      // 适配NPM包的播放逻辑
+      // InnerAudioContext的播放逻辑
       const playAudio = () => {
         if (this.loadTimeoutTimer) {
           clearTimeout(this.loadTimeoutTimer);
@@ -438,11 +434,11 @@ Page({
           this.startProgressTimer();
         } catch (err) {
           console.error('❌ 播放触发失败：', err);
-          wx.showToast({ title: '播放失败，请点击重试', icon: 'none' });
+          wx.toast({ title: '播放失败，请点击重试', icon: 'none' });
         }
       };
 
-      // 适配NPM包的时长判断
+      // InnerAudioContext的时长判断
       if (this.data.audioManager.getDuration() > 0) {
         playAudio();
       } else {
@@ -457,7 +453,7 @@ Page({
       }
 
     } else {
-      // 暂停逻辑（适配NPM包）
+      // 暂停逻辑（InnerAudioContext）
       this.data.audioManager.pause(); // 替换原生pause
       this.setData({
         isPlaying: false,
@@ -504,7 +500,7 @@ Page({
     if (!this.data.audioManager || !this.data.audioManager.getDuration()) return;
     const value = e.detail.value;
     const newTime = (value / 100) * this.data.audioManager.getDuration();
-    this.data.audioManager.seek(newTime); // 适配NPM包的seek
+    this.data.audioManager.seek(newTime); // InnerAudioContext的seek
     this.setData({ 
       progress: value,
       isDragging: false 
@@ -518,7 +514,7 @@ Page({
       const audioManager = this.data.audioManager;
       const data = this.data;
       if (!audioManager || data.isDragging || data.playState === 'pause' || !data.currentPlayId) return;
-      const currentTime = Math.floor(audioManager.getCurrentTime()) || 0; // 适配NPM包
+      const currentTime = Math.floor(audioManager.getCurrentTime()) || 0; // InnerAudioContext
       let totalTime = Math.floor(audioManager.getDuration()) || data.audioTotalTime || 60;
       let progressRatio = (currentTime / totalTime) * 100;
       progressRatio = Math.max(0, Math.min(100, progressRatio));
@@ -554,8 +550,8 @@ Page({
     }));
     this.setData({ audioList: newList, isPlaying: false });
 
-    this.data.audioManager.stop(); // 适配NPM包
-    clearSrc && this.data.audioManager.load(''); // 适配NPM包
+    this.data.audioManager.stop(); // InnerAudioContext
+    clearSrc && this.data.audioManager.load(''); // InnerAudioContext
     if (clearSrc) {
       this.setData({ 
         currentTime: '00:00', 
@@ -579,7 +575,7 @@ Page({
       index = this.data.selectedIndex;
     }
 
-    if (index === -1 || !currentId) return wx.showToast({ title: '数据不存在', icon: 'none' });
+    if (index === -1 || !currentId) return wx.toast({ title: '数据不存在', icon: 'none' });
 
     const isCollect = this.data.audioList[index].isCollect;
     let collectIds = getStorage('collectIds') || [];
@@ -588,11 +584,11 @@ Page({
     if (!isCollect) {
       collectIds.push(currentId);
       newList[index].isCollect = true;
-      wx.showToast({ title: '收藏成功', icon: 'success' });
+      wx.toast({ title: '收藏成功', icon: 'success' });
     } else {
       collectIds = collectIds.filter(id => id !== currentId);
       newList[index].isCollect = false;
-      wx.showToast({ title: '取消收藏', icon: 'none' });
+      wx.toast({ title: '取消收藏', icon: 'none' });
     }
 
     setStorage('collectIds', collectIds);
@@ -604,7 +600,7 @@ Page({
     this.hideActionMenu();
   },
 
-  delHandler(e) {
+  async delHandler(e) {
     let currentId;
     if (e && e.currentTarget && e.currentTarget.dataset.id) {
       currentId = e.currentTarget.dataset.id;
@@ -615,29 +611,24 @@ Page({
     const { audioList, currentAudio } = this.data;
     const index = audioList.findIndex(item => item.id === currentId);
 
-    if (index === -1 || !currentId) return wx.showToast({ title: '数据不存在', icon: 'none' });
+    if (index === -1 || !currentId) return wx.toast({ title: '数据不存在' });
 
-    wx.showModal({
-      title: '确认删除',
-      content: '是否删除该录音？',
-      success: (res) => {
-        if (res.confirm) {
-          const newList = audioList.filter(item => item.id !== currentId);
-          let collectIds = getStorage('collectIds') || [];
-          collectIds = collectIds.filter(id => id !== currentId);
-          setStorage('collectIds', collectIds);
-
-          const newCurrentAudio = currentAudio?.id === currentId ? (newList[0] || null) : currentAudio;
-
-          this.setData({ 
-            audioList: newList, 
-            currentAudio: newCurrentAudio 
-          });
-          this.updateFilteredList();
-          wx.showToast({ title: '删除成功', icon: 'success' });
-        }
-      }
-    });
     this.hideActionMenu();
+    const confirmed = await wx.modal({ title: '确认删除', content: '是否删除该录音？' });
+    if (confirmed) {
+      const newList = audioList.filter(item => item.id !== currentId);
+      let collectIds = getStorage('collectIds') || [];
+      collectIds = collectIds.filter(id => id !== currentId);
+      setStorage('collectIds', collectIds);
+
+      const newCurrentAudio = currentAudio?.id === currentId ? (newList[0] || null) : currentAudio;
+
+      this.setData({
+        audioList: newList,
+        currentAudio: newCurrentAudio
+      });
+      this.updateFilteredList();
+      wx.toast({ title: '删除成功', icon: 'success' });
+    }
   }
 });

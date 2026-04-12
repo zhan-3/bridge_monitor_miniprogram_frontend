@@ -22,15 +22,18 @@ Page({
   onLoad(options) {
     if (options.id) {
       const app = getApp();
-      app.switchDevice(options.id);
-      const deviceEntry = app.globalData.deviceTokens.find(d => d.sn === options.id);
+      const deviceEntry = (app.globalData.deviceTokens || []).find(d => d.sn === options.id);
+      if (deviceEntry) {
+        app.switchDevice(options.id);
+      }
       const authToken = deviceEntry ? deviceEntry.token : '';
+      console.log('[device-detail] onLoad - deviceEntry:', deviceEntry);
+      console.log('[device-detail] onLoad - authToken:', authToken ? authToken.substring(0, 30) + '...' : 'empty');
       this.setData({
         currentSn: options.id,
         currentDeviceToken: authToken
       });
     }
-    // 直接加载，无需延迟
     this.loadDeviceFromAPI();
   },
 
@@ -47,7 +50,7 @@ Page({
     const currentSn = this.data.currentSn;
 
     const device = await loadDeviceData(currentSn, authToken);
-    device.contacts = await loadDeviceContacts(authToken);
+    device.contacts = await loadDeviceContacts(authToken, currentSn);
     const markers = buildMarkers(device);
 
     this.setData({ device, markers });
@@ -69,17 +72,27 @@ Page({
   },
 
   saveName() {
-    const { tempName } = this.data;
-    if (!tempName) {
-      wx.showToast({ title: '请输入设备名称', icon: 'none' });
+    const { tempName, currentSn } = this.data;
+    if (!tempName || !tempName.trim()) {
+      wx.toast({ title: '请输入设备名称', icon: 'none' });
       return;
     }
+    const newName = tempName.trim();
     this.setData({
-      'device.name': tempName,
+      'device.name': newName,
       showEditNameModal: false,
       tempName: ''
     });
-    wx.showToast({ title: '保存成功', icon: 'success' });
+    // 同步到 globalData.deviceTokens 和本地存储
+    const app = getApp();
+    const deviceTokens = app.globalData.deviceTokens || [];
+    const idx = deviceTokens.findIndex(d => d.sn === currentSn);
+    if (idx >= 0) {
+      deviceTokens[idx].name = newName;
+      app.globalData.deviceTokens = deviceTokens;
+      wx.setStorageSync('deviceTokens', deviceTokens);
+    }
+    wx.toast({ title: '保存成功', icon: 'success' });
   },
 
   showAddContact() {
@@ -105,16 +118,16 @@ Page({
   async saveContact() {
     const { tempContactName, tempContactPhone, device } = this.data;
     if (!tempContactName) {
-      wx.showToast({ title: '请输入联系人姓名', icon: 'none' });
+      wx.toast({ title: '请输入联系人姓名', icon: 'none' });
       return;
     }
     const phoneReg = /^1[3-9]\d{9}$/;
     if (!phoneReg.test(tempContactPhone)) {
-      wx.showToast({ title: '请输入正确的11位手机号', icon: 'none' });
+      wx.toast({ title: '请输入正确的11位手机号', icon: 'none' });
       return;
     }
     if (device.contacts.some(c => c.phone === tempContactPhone)) {
-      wx.showToast({ title: '该手机号已添加', icon: 'none' });
+      wx.toast({ title: '该手机号已添加', icon: 'none' });
       return;
     }
 
@@ -122,9 +135,11 @@ Page({
       wx.showLoading({ title: '添加中...' });
       const authToken = this.data.currentDeviceToken;
       
-      const res = await http.post('/user/addPhoneNumber', { number: tempContactPhone, name: tempContactName }, {
-        Authorization: `Bearer ${authToken}`
-      });
+      const res = await http.post(
+        `/user/addPhoneNumber?number=${encodeURIComponent(tempContactPhone)}&name=${encodeURIComponent(tempContactName)}`,
+        {},
+        { Authorization: `Bearer ${authToken}` }
+      );
 
       wx.hideLoading();
       if (res.code === 1) {
@@ -139,7 +154,7 @@ Page({
           tempContactName: '',
           tempContactPhone: ''
         });
-        wx.showToast({ title: '添加成功', icon: 'success' });
+        wx.toast({ title: '添加成功', icon: 'success' });
       }
     } catch (err) {
       wx.hideLoading();
@@ -147,53 +162,46 @@ Page({
     }
   },
 
-  deleteContact(e) {
+  async deleteContact(e) {
     const contactId = e.currentTarget.dataset.id;
     const contact = this.data.device.contacts.find(c => c.id === contactId);
     if (!contact) return;
 
-    wx.showModal({
-      title: '提示',
-      content: '确定要删除该联系人吗？',
-      success: async (res) => {
-        if (res.confirm) {
-          try {
-            wx.showLoading({ title: '删除中...' });
-            const authToken = this.data.currentDeviceToken;
-            
-            const delRes = await http.delete(`/user/deletePhone?number=${encodeURIComponent(contact.phone)}`, {}, {
-              Authorization: `Bearer ${authToken}`
-            });
+    const confirmed = await wx.modal({ content: '确定要删除该联系人吗？' });
+    if (!confirmed) return;
 
-            wx.hideLoading();
-            if (delRes.code === 1) {
-              const contacts = this.data.device.contacts.filter(c => c.id !== contactId);
-              this.setData({ 'device.contacts': contacts });
-              wx.showToast({ title: '删除成功', icon: 'success' });
-            }
-          } catch (err) {
-            wx.hideLoading();
-            console.error('删除联系人失败：', err);
-          }
-        }
+    try {
+      wx.showLoading({ title: '删除中...' });
+      const authToken = this.data.currentDeviceToken;
+
+      const delRes = await http.delete(`/user/deletePhone?number=${encodeURIComponent(contact.phone)}`, {}, {
+        Authorization: `Bearer ${authToken}`
+      });
+
+      wx.hideLoading();
+      if (delRes.code === 1) {
+        const contacts = this.data.device.contacts.filter(c => c.id !== contactId);
+        this.setData({ 'device.contacts': contacts });
+        wx.toast({ title: '删除成功', icon: 'success' });
       }
-    });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('删除联系人失败：', err);
+    }
   },
 
-  confirmUnbind() {
-    wx.showModal({
+  async confirmUnbind() {
+    const confirmed = await wx.modal({
       title: '解除绑定',
-      content: '确定要解除该设备的绑定吗？',
-      success: (res) => {
-        if (res.confirm) {
-          // TODO: 后端暂无解绑接口，仅做前端提示
-          wx.showToast({ title: '已解除绑定', icon: 'success' });
-          setTimeout(() => {
-            wx.navigateBack();
-          }, 1500);
-        }
-      }
+      content: '确定要解除该设备的绑定吗？'
     });
+    if (confirmed) {
+      // TODO: 后端暂无解绑接口，仅做前端提示
+      wx.toast({ title: '已解除绑定', icon: 'success' });
+      setTimeout(() => {
+        wx.navigateBack();
+      }, 1500);
+    }
   },
 
   startNavigation() {
@@ -202,7 +210,7 @@ Page({
     const longitude = device.longitude || 116.4074;
 
     if (latitude === 0 || longitude === 0 || !latitude || !longitude) {
-      return wx.showToast({ title: '坐标异常', icon: 'none' });
+      return wx.toast({ title: '坐标异常', icon: 'none' });
     }
 
     wx.openLocation({
@@ -223,7 +231,7 @@ Page({
   goSetting() {
     const deviceId = this.data.device && this.data.device.id;
     if (!deviceId) {
-      wx.showToast({ title: '设备信息加载中', icon: 'none' });
+      wx.toast({ title: '设备信息加载中', icon: 'none' });
       return;
     }
     wx.navigateTo({

@@ -32,6 +32,7 @@ App({
     }
     this.globalData.deviceTokens = deviceTokens
     setStorage('deviceTokens', deviceTokens)
+    console.log('deviceTokens已存储:', JSON.stringify(deviceTokens));
     this.switchDevice(sn)
   },
 

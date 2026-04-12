@@ -48,29 +48,21 @@ Page({
   /**
    * 校验用户登录态（核心：优先读取缓存中的isLogin）
    */
-  checkLoginStatus() {
-    // 修复点1：正确读取缓存中的isLogin（key是字符串'isLogin'，默认值false）
+  async checkLoginStatus() {
     const cacheIsLogin = getStorage('isLogin', false);
-    // // 兜底校验：同时检查userId（避免isLogin为true但无用户ID的异常）
-    // const userId = getStorage('userId', '');
 
-    // 登录态有效：isLogin为true 且 userId存在
     if (cacheIsLogin) {
       this.setData({ isLogin: true });
     } else {
-      // 未登录：清空缓存中的isLogin（避免脏数据），并跳转登录页
       setStorage('isLogin', false);
-      wx.showModal({
-        title: '提示',
-        content: '请先登录后再绑定设备',
-        showCancel: false,
-        success: () => {
-          wx.redirectTo({
-            url: '/pages/login/login?redirect=bind-device' // 登录后返回绑定页
-          });
-        }
-      });
       this.setData({ isLogin: false });
+      await wx.modal({
+        content: '请先登录后再绑定设备',
+        showCancel: false
+      });
+      wx.redirectTo({
+        url: '/pages/login/login?redirect=bind-device'
+      });
     }
   },
 
@@ -88,9 +80,9 @@ Page({
         if (sn.includes('scene=')) {
           sn = decodeURIComponent(sn.split('=')[1]);
         }
-        sn ? this.bindDevice(sn) : wx.showToast({ title: '未识别到设备SN', icon: 'none' });
+        sn ? this.bindDevice(sn) : wx.toast({ title: '未识别到设备SN', icon: 'none' });
       },
-      fail: () => wx.showToast({ title: '扫码已取消', icon: 'none' })
+      fail: () => wx.toast({ title: '扫码已取消', icon: 'none' })
     });
   },
 
@@ -108,20 +100,17 @@ Page({
   /**
    * 关闭手动绑定弹窗
    */
-  closeManualBind() {
+  async closeManualBind() {
     const { inputSN } = this.data;
     if (inputSN) {
-      wx.showModal({
-        title: '提示',
+      const confirmed = await wx.modal({
         content: '你已输入SN码，确定要退出吗？',
         cancelText: '继续编辑',
-        confirmText: '确认退出',
-        success: (res) => {
-          if (res.confirm) {
-            this.setData({ showManualBind: false, inputSN: '' });
-          }
-        }
+        confirmText: '确认退出'
       });
+      if (confirmed) {
+        this.setData({ showManualBind: false, inputSN: '' });
+      }
     } else {
       this.setData({ showManualBind: false, inputSN: '' });
     }
@@ -141,46 +130,42 @@ Page({
   /**
    * 确认手动绑定
    */
-  confirmBind() {
+  async confirmBind() {
     const { inputSN, snError } = this.data;
     if (!inputSN) {
-      wx.showToast({ title: '请输入设备SN码', icon: 'none' });
+      wx.toast({ title: '请输入设备SN码' });
       return;
     }
     if (snError || !isValidSN(inputSN)) {
-      wx.showToast({ title: 'SN码格式错误', icon: 'none' });
+      wx.toast({ title: 'SN码格式错误' });
       return;
     }
 
-    wx.showModal({
+    const confirmed = await wx.modal({
       title: '确认绑定',
       content: `你确定要绑定SN码为【${inputSN}】的设备吗？`,
       cancelText: '取消',
-      confirmText: '确认绑定',
-      success: (res) => {
-        if (res.confirm) {
-          this.bindDevice(inputSN);
-          this.setData({ showManualBind: false, inputSN: '' });
-        }
-      }
+      confirmText: '确认绑定'
     });
+    if (confirmed) {
+      this.bindDevice(inputSN);
+      this.setData({ showManualBind: false, inputSN: '' });
+    }
   },
 
   /**
    * 自动绑定（从二维码跳转进入时）
    */
-  autoBindDevice(sn) {
-    wx.showModal({
+  async autoBindDevice(sn) {
+    const confirmed = await wx.modal({
       title: '自动绑定',
       content: `检测到设备SN码：【${sn}】，是否直接绑定？`,
       cancelText: '取消',
-      confirmText: '确认绑定',
-      success: (res) => {
-        if (res.confirm) {
-          this.bindDevice(sn);
-        }
-      }
+      confirmText: '确认绑定'
     });
+    if (confirmed) {
+      this.bindDevice(sn);
+    }
   },
 
   /**
@@ -193,37 +178,58 @@ Page({
     try {
       wx.showLoading({ title: '绑定设备中...', mask: true });
 
-      // 调用后端绑定接口：POST /user/bind/device
-      const bindRes = await http.post('/user/bind/device', {
-        deviceId: sn
-      });
+      const currentToken = getStorage('token');
+      console.log('[bindDevice] 当前初始token:', currentToken);
+      console.log('[bindDevice] 请求绑定设备, SN:', sn);
 
-      // 接口返回成功：code === 1，data为新token（包含deviceId）
-      if (bindRes.code === 1) {
-        // 追加到设备token列表（支持多设备）
-        if (bindRes.data && typeof bindRes.data === 'string') {
-          const app = getApp();
-          app.addDeviceToken(sn, bindRes.data);
-          app.globalData.pendingSN = '';  // 清除待绑定SN
+      // 后端使用 @RequestParam，deviceSn 需通过 URL 查询参数传递
+      let bindRes = await http.post(`/user/bind/device?deviceSn=${encodeURIComponent(sn)}`, {}, {
+        Authorization: `Bearer ${currentToken}`
+      }, true);
+
+      console.log('[bindDevice] /user/bind/device 响应:', JSON.stringify(bindRes));
+
+      if (bindRes.code === 1 && bindRes.data === '绑定成功') {
+        console.log('[bindDevice] 设备已绑定，尝试获取设备token...');
+        bindRes = await http.post(`/user/bind/userDeviceLogin?deviceSn=${encodeURIComponent(sn)}`, {}, {
+          Authorization: `Bearer ${currentToken}`
+        }, true);
+        console.log('[bindDevice] /user/bind/userDeviceLogin 响应:', JSON.stringify(bindRes));
+      }
+
+      if (bindRes.code === 1 && bindRes.data && typeof bindRes.data === 'string' && !/[\u4e00-\u9fa5]/.test(bindRes.data)) {
+        const app = getApp();
+        console.log('[bindDevice] 获取到设备token:', bindRes.data.substring(0, 30) + '...');
+        
+        app.globalData.deviceTokens = app.globalData.deviceTokens || [];
+        const index = app.globalData.deviceTokens.findIndex(d => d.sn === sn);
+        if (index >= 0) {
+          app.globalData.deviceTokens[index] = { sn, token: bindRes.data, name: sn };
+        } else {
+          app.globalData.deviceTokens.push({ sn, token: bindRes.data, name: sn });
         }
-
-        wx.showModal({
+        setStorage('deviceTokens', app.globalData.deviceTokens);
+        app.globalData.currentSn = sn;
+        app.globalData.hasDeviceBound = true;
+        setStorage('currentSn', sn);
+        
+        console.log('[bindDevice] 设备token已保存到deviceTokens');
+        
+        await wx.modal({
           title: '绑定成功',
           content: `设备 "${sn}" 绑定成功`,
-          showCancel: false,
-          success: () => {
-            wx.switchTab({ url: '/pages/home/home' });
-          }
+          showCancel: false
         });
+        wx.switchTab({ url: '/pages/home/home' });
       } else {
-        // 接口返回错误（如设备已被其他用户绑定、设备ID无效）
-        wx.showToast({ title: bindRes.msg || '绑定失败', icon: 'none' });
+        console.error('[bindDevice] 绑定失败:', bindRes);
+        wx.toast({ title: bindRes.msg || '绑定失败', icon: 'none' });
       }
 
     } catch (err) {
       console.error('设备绑定失败：', err);
       const errMsg = err?.msg || err?.message || '绑定失败，请检查网络或设备ID是否正确';
-      wx.showToast({ title: errMsg, icon: 'none' });
+      wx.toast({ title: errMsg, icon: 'none' });
     } finally {
       this.setData({ isLoading: false });
       wx.hideLoading();

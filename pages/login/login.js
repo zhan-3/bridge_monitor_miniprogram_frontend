@@ -25,14 +25,17 @@ Page({
     try {
       const userRes = await http.get('/user/getMainMessage');
       if (userRes.code === 1 && userRes.data) {
-        const { nickName, avatarUrl, phone } = userRes.data;
-        const userInfo = { nickName, avatarUrl, phone };
+        const { nickName, avatarUrl } = userRes.data;
+        const userInfo = getStorage('userInfo') || {};
+        userInfo.nickName = nickName;
+        userInfo.avatarUrl = avatarUrl;
         setStorage('userInfo', userInfo);
 
         if (nickName && avatarUrl) {
-          // 检查设备绑定状态
+          // 检查设备绑定状态（data 为 SN 数组或空字符串 ""）
           const bindRes = await http.get('/user/bind/status');
-          if (bindRes.code === 1 && bindRes.data && bindRes.data !== '') {
+          const hasBound = bindRes.code === 1 && Array.isArray(bindRes.data) && bindRes.data.length > 0;
+          if (hasBound) {
             // 已绑定设备，直接进入首页
             this.setData({ step: 4 });
             setTimeout(() => {
@@ -62,7 +65,7 @@ Page({
       });
 
       if (!loginRes.code) {
-        wx.showToast({ title: '获取登录凭证失败', icon: 'error' });
+        wx.toast({ title: '获取登录凭证失败', icon: 'error' });
         return;
       }
 
@@ -73,36 +76,35 @@ Page({
 
       if (res.code !== 1) {
         wx.hideLoading();
-        wx.showToast({ title: res.msg || '登录失败', icon: 'error' });
+        wx.toast({ title: res.msg || '登录失败', icon: 'error' });
         return;
       }
 
-      if (!res.data || typeof res.data !== 'string') {
+      if (!res.data || typeof res.data !== 'string' || /[\u4e00-\u9fa5]/.test(res.data)) {
         wx.hideLoading();
-        wx.showToast({ title: 'Token获取失败', icon: 'error' });
+        wx.toast({ title: 'Token获取失败', icon: 'error' });
         return;
       }
 
-      // 保存初始token（仅含userId，不含deviceId）
       const app = getApp();
       app.setToken(res.data);
       app.globalData.hasBaseLogin = true;
       setStorage('isLogin', true);
 
       wx.hideLoading();
-      wx.showToast({ title: '登录成功', icon: 'success' });
+      wx.toast({ title: '登录成功', icon: 'success' });
       this.setData({ step: 2 });
     } catch (err) {
       wx.hideLoading();
       console.error('登录失败：', err);
-      wx.showToast({ title: '网络异常，请重试', icon: 'error' });
+      wx.toast({ title: '网络异常，请重试', icon: 'error' });
     }
   },
 
   getUserInfo() {
     const token = getStorage('token');
     if (!token) {
-      wx.showToast({ title: '请先完成登录', icon: 'error' });
+      wx.toast({ title: '请先完成登录', icon: 'error' });
       return;
     }
 
@@ -110,13 +112,13 @@ Page({
       desc: '完善小程序个人资料',
       success: async (res) => {
         if (!res || !res.userInfo) {
-          wx.showToast({ title: '获取信息失败', icon: 'error' });
+          wx.toast({ title: '获取信息失败', icon: 'error' });
           return;
         }
 
         const { avatarUrl, nickName } = res.userInfo;
         if (!avatarUrl || !nickName) {
-          wx.showToast({ title: '信息不完整', icon: 'error' });
+          wx.toast({ title: '信息不完整', icon: 'error' });
           return;
         }
 
@@ -138,19 +140,19 @@ Page({
           setStorage('userInfo', userInfo);
 
           wx.hideLoading();
-          wx.showToast({ title: '授权成功', icon: 'success' });
+          wx.toast({ title: '授权成功', icon: 'success' });
           this.setData({ step: 3 });
         } catch (err) {
           wx.hideLoading();
           console.error('保存用户信息失败：', err);
-          wx.showToast({ title: '保存失败，请重试', icon: 'none' });
+          wx.toast({ title: '保存失败，请重试', icon: 'none' });
         }
       },
       fail: (err) => {
         if (err.errMsg.includes('cancel')) {
-          wx.showToast({ title: '已取消授权', icon: 'none' });
+          wx.toast({ title: '已取消授权', icon: 'none' });
         } else {
-          wx.showToast({ title: '授权失败', icon: 'error' });
+          wx.toast({ title: '授权失败', icon: 'error' });
         }
       }
     });
@@ -195,14 +197,14 @@ Page({
     const { phone } = this.data;
 
     if (!isValidPhone(phone)) {
-      wx.showToast({ title: '请输入正确的手机号', icon: 'none' });
+      wx.toast({ title: '请输入正确的手机号', icon: 'none' });
       this.setData({ phoneError: true });
       return;
     }
 
     const token = getStorage('token');
     if (!token) {
-      wx.showToast({ title: '请先完成登录', icon: 'error' });
+      wx.toast({ title: '请先完成登录', icon: 'error' });
       return;
     }
 
@@ -216,7 +218,7 @@ Page({
       wx.hideLoading();
 
       if (res.code !== 1) {
-        wx.showToast({ title: res.msg || '保存失败', icon: 'none' });
+        wx.toast({ title: res.msg || '保存失败', icon: 'none' });
         return;
       }
 
@@ -225,14 +227,14 @@ Page({
       setStorage('userInfo', userInfo);
       setStorage('phone', phone);
 
-      wx.showToast({ title: '保存成功', icon: 'success' });
+      wx.toast({ title: '保存成功', icon: 'success' });
       
       this.setData({ showPhoneModal: false, step: 3 });
       
     } catch (err) {
       wx.hideLoading();
       console.error('保存手机号失败：', err);
-      wx.showToast({ title: '网络异常，请重试', icon: 'none' });
+      wx.toast({ title: '网络异常，请重试', icon: 'none' });
     }
   }
 });

@@ -87,30 +87,26 @@ Page({
       const devices = [];
       for (const dt of deviceTokens) {
         try {
-          // 用各自的token请求，避免切换全局token
-          const bindRes = await http.get('/user/bind/status', {}, {
+          const bindRes = await http.get('/user/bind/status', { deviceSn: dt.sn }, {
             Authorization: `Bearer ${dt.token}`
           });
-          if (bindRes.code === 1 && bindRes.data && bindRes.data !== '') {
-            const { deviceName, status = 'normal' } = bindRes.data;
-            const name = deviceName || dt.sn;
-            dt.name = name;
+          console.log('[home] /user/bind/status response for', dt.sn, ':', JSON.stringify(bindRes));
+          if (bindRes.code === 1 && bindRes.data) {
+            // bind/status 返回的是 SN 数组，不是自定义名称
+            // 优先使用本地 deviceTokens 中保存的自定义名称，没有才用 SN
+            const displayName = (dt.name && dt.name !== dt.sn) ? dt.name : dt.sn;
             devices.push({
               id: dt.sn,
               sn: dt.sn,
-              name,
-              status,
-              statusText: DEVICE_STATUS_MAP[status] || '正常'
+              name: displayName,
+              status: 'normal',
+              statusText: '正常'
             });
           }
         } catch (err) {
           console.error('获取设备状态失败：', dt.sn, err);
         }
       }
-
-      // 更新本地存储的设备名称
-      setStorage('deviceTokens', deviceTokens);
-      app.globalData.deviceTokens = deviceTokens;
 
       // 仅在数据有变化时才 setData，避免无意义的渲染
       if (JSON.stringify(devices) !== JSON.stringify(this.data.devices)) {

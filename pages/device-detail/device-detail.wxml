@@ -46,26 +46,24 @@
       <text class="add-btn" bindtap="showAddContact">＋</text>
     </view>
 
-    <block wx:for="{{device.contacts}}" wx:key="id">
-      <view class="contact-item-wrap {{swipeId === item.id && swipeOffset < 0 ? 'swiped' : ''}}">
-        <view 
-          class="contact-item" 
-          bindtouchstart="touchStart" 
-          bindtouchmove="touchMove" 
-          bindtouchend="touchEnd" 
-          data-id="{{item.id}}"
-          style="transform: translateX({{swipeId === item.id ? swipeOffset : 0}}px)"
-        >
-          <view class="contact-info">
-            <view class="contact-name">{{item.name}}</view>
-            <view class="contact-phone">{{item.phone}}</view>
-          </view>
+    <view wx:for="{{device.contacts}}" wx:key="id" class="contact-item-wrap {{swipeId === item.id && swipeOffset < 0 ? 'swiped' : ''}}">
+      <view
+        class="contact-item"
+        bindtouchstart="touchStart"
+        bindtouchmove="touchMove"
+        bindtouchend="touchEnd"
+        data-id="{{item.id}}"
+        style="transform: translateX({{swipeId === item.id ? swipeOffset : 0}}px)"
+      >
+        <view class="contact-info">
+          <view class="contact-name">{{item.name}}</view>
+          <view class="contact-phone">{{item.phone}}</view>
         </view>
-        <view class="delete-btn" data-id="{{item.id}}" bindtap="deleteContact">删除</view>
       </view>
-    </block>
+      <view class="delete-btn" data-id="{{item.id}}" bindtap="deleteContact">删除</view>
+    </view>
 
-    <view wx:if="{{device.contacts.length === 0}}" class="empty-state">
+    <view wx:if="{{!device || !device.contacts || device.contacts.length === 0}}" class="empty-state">
       <text class="empty-icon">📵</text>
       <text class="empty-text">暂无紧急联系人</text>
       <text class="empty-hint">点击右上角「＋」添加联系人</text>

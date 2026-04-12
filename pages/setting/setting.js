@@ -101,13 +101,23 @@ Page({
 
   saveName() {
     const { device, tempName } = this.data;
-    if (device && tempName.trim()) {
-      this.setData({
-        'device.name': tempName.trim(),
-        showEditNameModal: false
-      });
-      wx.showToast({ title: '名称已修改', icon: 'success' });
+    if (!device || !tempName.trim()) return;
+    const newName = tempName.trim();
+    this.setData({
+      'device.name': newName,
+      showEditNameModal: false,
+      tempName: ''
+    });
+    // 同步到 globalData.deviceTokens 和本地存储
+    const app = getApp();
+    const deviceTokens = app.globalData.deviceTokens || [];
+    const idx = deviceTokens.findIndex(d => d.sn === device.sn);
+    if (idx >= 0) {
+      deviceTokens[idx].name = newName;
+      app.globalData.deviceTokens = deviceTokens;
+      wx.setStorageSync('deviceTokens', deviceTokens);
     }
+    wx.toast({ title: '名称已修改', icon: 'success' });
   },
 
   chooseLocation() {
@@ -134,30 +144,28 @@ Page({
             markers: markers
           });
           
-          wx.showToast({ title: '位置已选择', icon: 'success' });
+          wx.toast({ title: '位置已选择', icon: 'success' });
         }
       },
       fail: (err) => {
         if (err.errMsg && err.errMsg.includes('cancel')) return;
-        wx.showToast({ title: '选择位置失败', icon: 'none' });
+        wx.toast({ title: '选择位置失败', icon: 'none' });
       }
     });
   },
 
   saveSetting() {
     const { device, isDeviceSetting } = this.data;
-    
+
     if (isDeviceSetting && device) {
-      const devices = wx.getStorageSync('devices') || defaultDevices;
-      const index = devices.findIndex(d => d.id === device.id);
-      if (index >= 0) {
-        devices[index] = { ...devices[index], ...device };
-        wx.setStorageSync('devices', devices);
-        console.log('Device saved:', devices[index]);
-      } else {
-        console.log('Device not found, adding new');
-        devices.push(device);
-        wx.setStorageSync('devices', devices);
+      // 将设备名称同步到 deviceTokens
+      const app = getApp();
+      const deviceTokens = app.globalData.deviceTokens || [];
+      const idx = deviceTokens.findIndex(d => d.sn === device.sn);
+      if (idx >= 0) {
+        deviceTokens[idx].name = device.name;
+        app.globalData.deviceTokens = deviceTokens;
+        wx.setStorageSync('deviceTokens', deviceTokens);
       }
     }
 
@@ -170,7 +178,7 @@ Page({
     wx.setStorageSync('alarmSound', alarmSound);
     wx.setStorageSync('disconnectWarn', disconnectWarn);
 
-    wx.showToast({ title: '保存成功', icon: 'success' });
+    wx.toast({ title: '保存成功', icon: 'success' });
     
     setTimeout(() => {
       wx.navigateBack();
