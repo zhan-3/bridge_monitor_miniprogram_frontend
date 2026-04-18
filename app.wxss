@@ -1,0 +1,26 @@
+/* app.wxss 全局样式 - 简化兼容版 */
+/* 橙色系主色调（直接定义，避免小程序兼容问题） */
+page {
+  --orange-primary: #FF7A00;    /* 主橙色（按钮/导航栏） */
+  --orange-light: #FFE8D8;      /* 浅橙色（背景/高亮） */
+  --orange-dark: #E86A00;       /* 深橙色（点击态/边框） */
+  --text-main: #333333;         /* 主文字色 */
+  --text-secondary: #666666;    /* 次要文字色 */
+  --bg-main: #FFFFFF;           /* 页面主背景 */
+  --border-color: #EEEEEE;      /* 通用边框色 */
+  
+  background-color: var(--bg-main);
+  font-size: 28rpx;
+  color: var(--text-main);
+  line-height: 1.6;
+}
+
+/* 全局重置button默认样式 */
+button {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+button::after {
+  border: none;
+}

@@ -1,0 +1,67 @@
+/* 通用按钮基础样式 */
+.custom-btn {
+  border: none;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  width: 100%;
+  font-weight: 500;
+}
+
+/* 尺寸控制 */
+.btn-normal {
+  height: 88rpx;
+  font-size: 32rpx;
+}
+.btn-large {
+  height: 100rpx;
+  font-size: 36rpx;
+}
+
+/* 普通按钮样式（默认：浅灰色背景+深灰色文字） */
+.normal-btn {
+  background-color: #f5f5f5;
+  color: #666666;
+}
+/* 普通按钮-白色变体（可通过自定义类扩展） */
+.normal-btn.white {
+  background-color: #ffffff;
+  color: #333333;
+  border: 1rpx solid #eeeeee;
+}
+
+/* 橙色按钮样式（原有orange-button效果） */
+.orange-btn {
+  background-color: #FF7A00;
+  color: #ffffff;
+}
+
+/* 禁用态样式 */
+.custom-btn.disabled {
+  background-color: #CCCCCC !important;
+  color: #999999 !important;
+}
+
+/* 点击态 */
+.normal-btn:active:not(.disabled) {
+  background-color: #e5e5e5;
+}
+.orange-btn:active:not(.disabled) {
+  background-color: #E86A00;
+}
+.normal-btn.white:active:not(.disabled) {
+  background-color: #f0f0f0;
+}
+
+/* 去除小程序默认button的边框 */
+.custom-btn::after {
+  border: none;
+}
+
+.btn-text {
+  font-weight: 500;
+}

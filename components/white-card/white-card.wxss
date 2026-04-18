@@ -1,0 +1,53 @@
+/* components/white-card/white-card.wxss */
+.white-card-container {
+  background-color: #ffffff;
+  border-radius: 12rpx;
+  border: 1rpx solid var(--border-color, #eeeeee);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* 卡片头部：强制flex布局，标题占满剩余空间，右侧内容靠右 */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 关键：标题左，右侧内容右 */
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid var(--border-color, #eeeeee);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.header-left {
+  flex: 1; /* 标题区域占满剩余空间，右侧内容不被挤压 */
+}
+
+.header-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text-main, #333333);
+}
+
+/* 右侧插槽容器：强制显示，避免内容隐藏 */
+.header-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 40rpx; /* 给加号按钮预留最小宽度 */
+}
+
+/* 卡片主体（默认内边距，可通过自定义类覆盖） */
+.card-body {
+  padding: 24rpx;
+}
+
+/* 卡片底部 */
+.card-footer {
+  padding: 20rpx 24rpx;
+  border-top: 1rpx solid var(--border-color, #eeeeee);
+}
+
+.footer-text {
+  font-size: 28rpx;
+  color: var(--text-secondary, #666666);
+}

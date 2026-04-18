@@ -1,0 +1,13 @@
+<view class="card-container" bindtap="onCardClick">
+  <!-- 卡片头部（可选） -->
+  <view class="card-header" wx:if="{{title}}">
+    <text class="header-title">{{title}}</text>
+    <text class="header-tag" wx:if="{{tag}}">{{tag}}</text>
+  </view>
+  <!-- 卡片内容（插槽：自定义内容） -->
+  <slot name="content"></slot>
+  <!-- 卡片底部（可选） -->
+  <view class="card-footer" wx:if="{{footerText}}">
+    <text class="footer-text">{{footerText}}</text>
+  </view>
+</view>

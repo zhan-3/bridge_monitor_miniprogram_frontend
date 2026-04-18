@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "功能设置",
+  "usingComponents": {
+    "white-card": "/components/white-card/white-card",
+    "custom-button": "/components/custom-button/custom-button"
+  }
+}

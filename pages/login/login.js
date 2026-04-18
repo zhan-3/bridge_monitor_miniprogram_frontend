@@ -1,0 +1,242 @@
+// pages/login/login.js
+import { setStorage, getStorage } from '../../utils/storage'
+import http from '../../utils/http'
+import { isValidPhone } from '../../utils/validators'
+
+Page({
+  data: {
+    step: 1,
+    showPhoneModal: false,
+    phone: '',
+    phoneError: false   // 手机号格式错误提示
+  },
+
+  onLoad() {
+    this.checkLoginStatus();
+  },
+
+  async checkLoginStatus() {
+    const token = getStorage('token');
+    const isLogin = getStorage('isLogin');
+
+    if (!isLogin || !token) return;
+
+    // 已有token，尝试获取用户信息
+    try {
+      const userRes = await http.get('/user/getMainMessage');
+      if (userRes.code === 1 && userRes.data) {
+        const { nickName, avatarUrl } = userRes.data;
+        const userInfo = getStorage('userInfo') || {};
+        userInfo.nickName = nickName;
+        userInfo.avatarUrl = avatarUrl;
+        setStorage('userInfo', userInfo);
+
+        if (nickName && avatarUrl) {
+          // 检查设备绑定状态（data 为 SN 数组或空字符串 ""）
+          const bindRes = await http.get('/user/bind/status');
+          const hasBound = bindRes.code === 1 && Array.isArray(bindRes.data) && bindRes.data.length > 0;
+          if (hasBound) {
+            // 已绑定设备，直接进入首页
+            this.setData({ step: 4 });
+            setTimeout(() => {
+              wx.switchTab({ url: '/pages/home/home' });
+            }, 500);
+          } else {
+            // 未绑定设备，进入第3步（引导绑定）
+            this.setData({ step: 3 });
+          }
+        } else {
+          this.setData({ step: 2 });
+        }
+      }
+    } catch (err) {
+      console.log('获取用户状态失败，需重新登录');
+    }
+  },
+
+  async doBaseLogin() {
+    try {
+      const loginRes = await new Promise((resolve, reject) => {
+        wx.login({
+          timeout: 5000,
+          success: resolve,
+          fail: reject
+        });
+      });
+
+      if (!loginRes.code) {
+        wx.toast({ title: '获取登录凭证失败', icon: 'error' });
+        return;
+      }
+
+      wx.showLoading({ title: '登录中...' });
+      const res = await http.post('/system/log', {
+        code: loginRes.code
+      });
+
+      if (res.code !== 1) {
+        wx.hideLoading();
+        wx.toast({ title: res.msg || '登录失败', icon: 'error' });
+        return;
+      }
+
+      if (!res.data || typeof res.data !== 'string' || /[\u4e00-\u9fa5]/.test(res.data)) {
+        wx.hideLoading();
+        wx.toast({ title: 'Token获取失败', icon: 'error' });
+        return;
+      }
+
+      const app = getApp();
+      app.setToken(res.data);
+      app.globalData.hasBaseLogin = true;
+      setStorage('isLogin', true);
+
+      wx.hideLoading();
+      wx.toast({ title: '登录成功', icon: 'success' });
+      this.setData({ step: 2 });
+    } catch (err) {
+      wx.hideLoading();
+      console.error('登录失败：', err);
+      wx.toast({ title: '网络异常，请重试', icon: 'error' });
+    }
+  },
+
+  getUserInfo() {
+    const token = getStorage('token');
+    if (!token) {
+      wx.toast({ title: '请先完成登录', icon: 'error' });
+      return;
+    }
+
+    wx.getUserProfile({
+      desc: '完善小程序个人资料',
+      success: async (res) => {
+        if (!res || !res.userInfo) {
+          wx.toast({ title: '获取信息失败', icon: 'error' });
+          return;
+        }
+
+        const { avatarUrl, nickName } = res.userInfo;
+        if (!avatarUrl || !nickName) {
+          wx.toast({ title: '信息不完整', icon: 'error' });
+          return;
+        }
+
+        try {
+          wx.showLoading({ title: '保存中...' });
+
+          // 调用后端接口保存头像和昵称
+          await http.post('/user/getMessage', {
+            avatarUrl,
+            nickName
+          });
+
+          const userInfo = getStorage('userInfo') || {};
+          userInfo.avatarUrl = avatarUrl;
+          userInfo.nickName = nickName;
+
+          setStorage('avatarUrl', avatarUrl);
+          setStorage('nickName', nickName);
+          setStorage('userInfo', userInfo);
+
+          wx.hideLoading();
+        wx.toast({ title: '授权成功', icon: 'success' });
+        setTimeout(() => {
+          wx.switchTab({ url: '/pages/home/home' });
+        }, 500);
+      } catch (err) {
+          wx.hideLoading();
+          console.error('保存用户信息失败：', err);
+          wx.toast({ title: '保存失败，请重试', icon: 'none' });
+        }
+      },
+      fail: (err) => {
+        if (err.errMsg.includes('cancel')) {
+          wx.toast({ title: '已取消授权', icon: 'none' });
+        } else {
+          wx.toast({ title: '授权失败', icon: 'error' });
+        }
+      }
+    });
+  },
+
+  // 第3步：引导用户去绑定设备
+  goBindDevice() {
+    const app = getApp();
+    const pendingSN = app.globalData.pendingSN || '';
+    const url = pendingSN
+      ? `/pages/devicebinding/devicebinding?sn=${encodeURIComponent(pendingSN)}`
+      : '/pages/devicebinding/devicebinding';
+    wx.navigateTo({ url });
+  },
+
+  // 跳过绑定，直接进入首页（部分功能受限）
+  skipBind() {
+    wx.switchTab({ url: '/pages/home/home' });
+  },
+
+  showPhoneModal() {
+    this.setData({ showPhoneModal: true });
+  },
+
+  hidePhoneModal() {
+    this.setData({
+      showPhoneModal: false,
+      phone: '',
+      phoneError: false
+    });
+  },
+
+  onPhoneInput(e) {
+    const phone = e.detail.value;
+    this.setData({
+      phone,
+      phoneError: phone.length > 0 && !isValidPhone(phone)
+    });
+  },
+
+  async confirmPhone() {
+    const { phone } = this.data;
+
+    if (!isValidPhone(phone)) {
+      wx.toast({ title: '请输入正确的手机号', icon: 'none' });
+      this.setData({ phoneError: true });
+      return;
+    }
+
+    const token = getStorage('token');
+    if (!token) {
+      wx.toast({ title: '请先完成登录', icon: 'error' });
+      return;
+    }
+
+    try {
+      wx.showLoading({ title: '保存中...' });
+      
+      const res = await http.post('/user/userBindPhone?phone=' + phone, {}, {
+        Authorization: `Bearer ${token}`
+      }, true);
+
+      wx.hideLoading();
+
+      if (res.code !== 1) {
+        wx.toast({ title: res.msg || '保存失败', icon: 'none' });
+        return;
+      }
+
+      const userInfo = getStorage('userInfo') || {};
+      userInfo.phone = phone;
+      setStorage('userInfo', userInfo);
+      setStorage('phone', phone);
+
+      wx.toast({ title: '保存成功', icon: 'success' });
+      
+      this.setData({ showPhoneModal: false, step: 3 });
+      
+    } catch (err) {
+      wx.hideLoading();
+      console.error('保存手机号失败：', err);
+      wx.toast({ title: '网络异常，请重试', icon: 'none' });
+    }
+  }
+});

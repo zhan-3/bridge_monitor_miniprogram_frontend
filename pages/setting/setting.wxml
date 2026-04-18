@@ -1,0 +1,113 @@
+<view class="setting-container">
+  <scroll-view class="setting-scroll" scroll-y>
+    <block wx:if="{{isDeviceSetting}}">
+      <white-card title="📍 设备位置设置" customClass="setting-module-card">
+        <view class="location-card">
+          <view class="location-map">
+            <map
+              wx:if="{{device.latitude && device.longitude}}"
+              class="preview-map"
+              latitude="{{device.latitude}}"
+              longitude="{{device.longitude}}"
+              scale="15"
+              markers="{{markers}}"
+            ></map>
+            <view wx:else class="map-placeholder">
+              <text>暂无位置信息</text>
+            </view>
+          </view>
+          <view class="location-info">
+            <view class="location-name">{{device.name}}</view>
+            <view class="location-address">
+              <text class="address-icon">📍</text>
+              <text class="address-text">{{device.address || '请选择设备安装位置'}}</text>
+            </view>
+          </view>
+          <view class="location-actions">
+            <button class="location-btn" bindtap="chooseLocation">
+              <text class="btn-icon">📍</text>
+              <text class="btn-text">选择位置</text>
+            </button>
+          </view>
+        </view>
+      </white-card>
+
+      <white-card title="📋 设备信息" customClass="setting-module-card">
+        <view class="device-info-grid">
+          <view class="info-item name-item" bindtap="editDeviceName">
+            <text class="info-label">名称</text>
+            <view class="info-value-row">
+              <text class="info-value">{{device.name}}</text>
+              <text class="edit-icon">✎</text>
+            </view>
+          </view>
+          <view class="info-item">
+            <text class="info-label">序列号</text>
+            <text class="info-value sn-value">{{device.sn}}</text>
+          </view>
+          <view class="info-item">
+            <text class="info-label">状态</text>
+            <text class="info-value status-badge {{device.status}}">{{device.statusText}}</text>
+          </view>
+        </view>
+      </white-card>
+    </block>
+
+    <white-card title="🎙️ 录音设置" customClass="setting-module-card" footerText="报警时现场录音相关配置">
+      <view class="setting-item">
+        <view class="item-label">报警自动录音</view>
+        <switch class="item-switch" checked="{{autoRecord}}" bindchange="switchAutoRecord" />
+      </view>
+      <view class="setting-item">
+        <view class="item-label">录音质量</view>
+        <picker class="item-picker" mode="selector" range="{{recordQualityList}}" value="{{qualityIndex}}" bindchange="changeRecordQuality">
+          <view>{{recordQualityList[qualityIndex]}}</view>
+        </picker>
+      </view>
+      <view class="setting-item">
+        <view class="item-label">录音自动保存</view>
+        <picker class="item-picker" mode="selector" range="{{saveDayList}}" value="{{dayIndex}}" bindchange="changeSaveDay">
+          <view>{{saveDayList[dayIndex]}}</view>
+        </picker>
+      </view>
+    </white-card>
+
+    <white-card title="🔧 硬件报警设置" customClass="setting-module-card" footerText="报警器硬件与APP联动配置">
+      <view class="setting-item">
+        <view class="item-label">APP报警推送</view>
+        <switch class="item-switch" checked="{{alarmPush}}" bindchange="switchAlarmPush" />
+      </view>
+      <view class="setting-item">
+        <view class="item-label">APP报警铃声</view>
+        <switch class="item-switch" checked="{{alarmSound}}" bindchange="switchAlarmSound" />
+      </view>
+      <view class="setting-item">
+        <view class="item-label">硬件断连提醒</view>
+        <switch class="item-switch" checked="{{disconnectWarn}}" bindchange="switchDisconnectWarn" />
+      </view>
+    </white-card>
+
+      <view class="save-btn-container">
+      <custom-button text="保存所有设置" type="orange" size="large" customClass="save-btn" bind:click="saveSetting"></custom-button>
+    </view>
+  </scroll-view>
+</view>
+
+<view class="modal-mask" wx:if="{{showEditNameModal}}" bindtap="closeEditNameModal"></view>
+<view class="modal-container" wx:if="{{showEditNameModal}}">
+  <view class="modal-title">修改设备名称</view>
+  <view class="modal-form">
+    <input 
+      class="modal-input" 
+      type="text" 
+      placeholder="请输入设备名称" 
+      bindinput="onNameInput"
+      value="{{tempName}}"
+      maxlength="20"
+    />
+  </view>
+  <view class="modal-btn-group">
+    <custom-button text="取消" type="normal" bind:click="closeEditNameModal" customClass="modal-btn-half"></custom-button>
+    <custom-button text="保存" type="orange" bind:click="saveName" customClass="modal-btn-half"></custom-button>
+  </view>
+</view>

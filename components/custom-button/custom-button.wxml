@@ -1,0 +1,9 @@
+<!-- 通用按钮组件：支持普通/橙色样式切换 -->
+<button 
+  class="custom-btn {{type === 'orange' ? 'orange-btn' : 'normal-btn'}} {{size === 'large' ? 'btn-large' : 'btn-normal'}} {{disabled ? 'disabled' : ''}} {{customClass}}"
+  bindtap="onBtnClick"
+  disabled="{{disabled}}"
+>
+
+<text class="btn-text">{{text}}</text>
+</button>

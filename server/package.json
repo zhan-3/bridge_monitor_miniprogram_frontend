@@ -1,0 +1,13 @@
+{
+  "name": "miniprogram-mock-server",
+  "version": "1.0.0",
+  "description": "智能报警小程序Mock后端",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}

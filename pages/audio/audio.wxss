@@ -1,0 +1,424 @@
+.audio-container {
+  min-height: 100vh;
+  background: #f6f6f6;
+}
+
+/* 播放器区域 */
+.player-section {
+  padding: 15px;
+  background: linear-gradient(135deg, #FF7A00 0%, #FF9933 100%);
+}
+
+.player-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(255, 122, 0, 0.2);
+}
+
+.player-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.player-icon {
+  font-size: 40px;
+  margin-right: 12px;
+}
+
+.player-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.player-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-meta {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.player-status {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.player-status.emergency {
+  background: #FFF0E8;
+  color: #FF7A00;
+}
+
+.player-status.normal {
+  background: #E8F5E9;
+  color: #52c41a;
+}
+
+/* 波形图 */
+.waveform-wrap {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.waveform {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 100%;
+}
+
+.wave-bar {
+  height: var(--bar-height); 
+}
+
+.waveform.active .wave-bar {
+  background: var(--orange-primary);
+  animation: wave 0.8s ease-in-out infinite;
+}
+
+.waveform.active .wave-bar:nth-child(odd) {
+  animation-delay: 0.1s;
+}
+
+.waveform.active .wave-bar:nth-child(3n) {
+  animation-delay: 0.2s;
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1); }
+}
+
+/* 播放控制 */
+.player-controls {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.time-current, .time-total {
+  font-size: 12px;
+  color: #999;
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.time-total {
+  text-align: right;
+}
+
+.progress-slider {
+  flex: 1;
+  margin: 0 8px;
+}
+
+/* 控制按钮 */
+.control-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+  margin-bottom: 16px;
+}
+
+.control-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-btn image {
+  width: 24px;
+  height: 24px;
+}
+
+.control-btn.play-btn {
+  width: 56px;
+  height: 56px;
+  background: var(--orange-primary);
+  border-radius: 50%;
+  padding: 0;
+}
+
+.control-btn.play-btn image {
+  width: 28px;
+  height: 28px;
+}
+
+/* 速度控制 */
+.speed-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.speed-label {
+  font-size: 12px;
+  color: #999;
+  margin-right: 10px;
+}
+
+.speed-options {
+  display: flex;
+  gap: 8px;
+}
+
+.speed-opt {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: #f5f5f5;
+  color: #666;
+}
+
+.speed-opt.active {
+  background: var(--orange-primary);
+  color: #fff;
+}
+
+/* 列表区域 */
+.list-section {
+  padding: 0 15px 15px;
+}
+
+.list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+}
+
+.list-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.list-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.sort-btn, .filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #fff;
+  color: #666;
+  line-height: 1.2;
+  min-height: 28px;
+  box-sizing: border-box;
+  border: 1px solid #eee;
+}
+
+.audio-list {
+  background: #fff;
+  border-radius: 12px;
+  max-height: calc(100vh - 400px);
+}
+
+/* 录音项 */
+.audio-item {
+  display: flex;
+  align-items: center;
+  padding: 14px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s;
+}
+
+.audio-item:last-child {
+  border-bottom: none;
+}
+
+.audio-item:active {
+  background: #fafafa;
+}
+
+.audio-item.active {
+  background: #FFF8F0;
+}
+
+.audio-icon {
+  font-size: 24px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.audio-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.audio-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audio-details {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+
+.audio-dot {
+  margin: 0 4px;
+}
+
+.audio-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.audio-status {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.audio-status.emergency {
+  background: #FFF0E8;
+  color: #FF7A00;
+}
+
+.audio-status.normal {
+  background: #E8F5E9;
+  color: #52c41a;
+}
+
+.collect-icon {
+  font-size: 16px;
+  color: #ddd;
+}
+
+.collect-icon.active {
+  color: #FFD700;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 16px;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.empty-desc {
+  font-size: 13px;
+  color: #999;
+}
+
+/* 操作菜单弹窗 */
+.action-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.action-sheet {
+  width: 100%;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.action-title {
+  font-size: 14px;
+  color: #999;
+  text-align: center;
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-list {
+  padding: 8px 0;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  padding: 14px 20px;
+}
+
+.action-item:active {
+  background: #f5f5f5;
+}
+
+.action-item.delete .action-text {
+  color: #ff4d4f;
+}
+
+.action-icon {
+  font-size: 20px;
+  margin-right: 12px;
+}
+
+.action-text {
+  font-size: 16px;
+  color: #333;
+}
+
+.action-cancel {
+  text-align: center;
+  padding: 14px;
+  background: #f5f5f5;
+  font-size: 16px;
+  color: #666;
+}
+
+.action-cancel:active {
+  background: #eee;
+}
