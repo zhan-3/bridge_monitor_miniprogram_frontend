@@ -10,6 +10,13 @@ app.use(express.json())
 const audioDir = path.join(__dirname, 'audio')
 if (!fs.existsSync(audioDir)) fs.mkdirSync(audioDir)
 
+const imagesDir = path.join(__dirname, '..', 'images')
+if (!fs.existsSync(imagesDir)) {
+  console.warn('[warn] images directory not found:', imagesDir)
+} else {
+  app.use('/images', express.static(imagesDir))
+}
+
 app.use('/audio', express.static(audioDir))
 
 app.get('/audio/generate', (req, res) => {
@@ -56,9 +63,9 @@ const initData = () => {
     address: '北京市朝阳区建国路88号'
   })
   DB.contacts.set(sn, [
-    { '名称': '张三', '手机号': '13812345678' },
-    { '名称': '李四', '手机号': '13988776655' },
-    { '名称': '王五', '手机号': '13755667788' }
+    { '电话': '15053957932' },
+    { '电话': '18105487580' },
+    { '电话': '19819692340' }
   ])
   DB.phoneNumbers.set('default', ['13812345678', '13988776655'])
   DB.settings.set(sn, {
@@ -148,11 +155,11 @@ app.post('/user/bind/userDeviceLogin', (req, res) => {
     return response(res, 0, '请先绑定手机号', null)
   }
 
-  // const deviceSn = req.query.deviceSn
-  // if (!deviceSn) {
-  //   log(req, res, 0)
-  //   return response(res, 0, '设备序列号不能为空', null)
-  // }
+  const deviceSn = req.query.deviceSn || req.body.deviceSn
+  if (!deviceSn) {
+    log(req, res, 0)
+    return response(res, 0, '设备序列号不能为空', null)
+  }
 
   const device = DB.devices.get(deviceSn)
   if (!device) {
@@ -259,6 +266,19 @@ app.get('/user/getLocation', (req, res) => {
   }
 })
 
+app.get('/user/getInstallLocation', (req, res) => {
+  const sn = req.query.deviceSn || getDeviceSnFromToken(req.headers.authorization)
+  const d = DB.devices.get(sn) || DB.devices.values().next().value
+
+  if (d) {
+    log(req, res, 1)
+    response(res, 1, 'success', { gpsLng: d.longitude, gpsLat: d.latitude, address: d.address })
+  } else {
+    log(req, res, 1)
+    response(res, 1, 'success', { gpsLng: '116.4074', gpsLat: '39.9042', address: '未知' })
+  }
+})
+
 app.get('/user/userGetPhone', (req, res) => {
   const sn = req.query.deviceSn || getDeviceSnFromToken(req.headers.authorization)
   const contacts = DB.contacts.get(sn) || DB.contacts.values().next().value || []
@@ -269,11 +289,11 @@ app.get('/user/userGetPhone', (req, res) => {
 
 app.post('/user/addPhoneNumber', (req, res) => {
   const sn = getDeviceSnFromToken(req.headers.authorization)
-  const { number, name } = req.query
+  const { number } = req.query
 
-  if (number && name && sn) {
+  if (number && sn) {
     const contacts = DB.contacts.get(sn) || []
-    contacts.push({ '名称': name, '手机号': number })
+    contacts.push({ '电话': number })
     DB.contacts.set(sn, contacts)
   }
 
@@ -287,7 +307,7 @@ app.delete('/user/deletePhone', (req, res) => {
 
   if (number && sn) {
     const contacts = DB.contacts.get(sn) || []
-    const idx = contacts.findIndex(c => c['手机号'] === number)
+    const idx = contacts.findIndex(c => c['电话'] === number)
     if (idx >= 0) {
       contacts.splice(idx, 1)
       DB.contacts.set(sn, contacts)

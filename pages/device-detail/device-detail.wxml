@@ -26,15 +26,15 @@
       </view>
       <view class="overlay-right">
         <view class="quick-action nav-action" bindtap="startNavigation">
-          <image class="action-img" src="/images/导航.png" mode="aspectFit" />
+          <image class="action-img" src="/images/navigator.png" mode="aspectFit" />
           <text class="action-label">导航</text>
         </view>
         <view class="quick-action audio-action" bindtap="goAudioPage">
-          <image class="action-img" src="/images/录音开启.png" mode="aspectFit" />
+          <image class="action-img" src="/images/voice.png" mode="aspectFit" />
           <text class="action-label">录音</text>
         </view>
         <view class="quick-action setting-action" bindtap="goSetting">
-          <image class="action-img" src="/images/设置.png" mode="aspectFit" />
+          <image class="action-img" src="/images/setting.png" mode="aspectFit" />
           <text class="action-label">设置</text>
         </view>
       </view>

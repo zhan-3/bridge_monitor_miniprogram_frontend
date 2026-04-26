@@ -1,4 +1,5 @@
 import { loadDeviceData, buildMarkers } from '../../utils/deviceService';
+import http from '../../utils/http';
 
 Page({
   data: {
@@ -122,35 +123,78 @@ Page({
 
   chooseLocation() {
     const { device } = this.data;
-    
-    wx.chooseLocation({
-      success: (res) => {
-        if (res && res.name) {
-          const { latitude, longitude, address, name } = res;
-          
+    const initialLatitude = Number(device?.latitude) || 39.9042;
+    const initialLongitude = Number(device?.longitude) || 116.4074;
+
+    const openPicker = () => {
+      wx.chooseLocation({
+        latitude: initialLatitude,
+        longitude: initialLongitude,
+        success: async (res) => {
+          if (!res) return;
+
+          const latitude = Number(res.latitude) || initialLatitude;
+          const longitude = Number(res.longitude) || initialLongitude;
+          const address = res.address || res.name || '设备位置';
+
           const markers = [{
             id: 1,
-            latitude: latitude,
-            longitude: longitude,
+            latitude,
+            longitude,
             iconPath: '/images/map.png',
             width: 32,
             height: 32
           }];
-          
+
           this.setData({
             'device.latitude': latitude,
             'device.longitude': longitude,
-            'device.address': address || name,
-            markers: markers
+            'device.address': address,
+            markers
           });
-          
+
+          try {
+            const app = getApp();
+            const deviceEntry = (app.globalData.deviceTokens || []).find(d => d.sn === device.sn);
+            const authToken = deviceEntry ? deviceEntry.token : '';
+            await http.post('/device/updateLocation', {
+              deviceSn: device.sn,
+              latitude,
+              longitude,
+              address
+            }, {
+              Authorization: `Bearer ${authToken}`
+            });
+          } catch (err) {
+            console.error('[setting] 保存设备位置失败：', err);
+          }
+
           wx.toast({ title: '位置已选择', icon: 'success' });
+        },
+        fail: (err) => {
+          console.error('[setting] chooseLocation fail:', err);
+          if (err.errMsg && err.errMsg.includes('cancel')) return;
+          wx.toast({ title: '选择位置失败', icon: 'none' });
         }
+      });
+    };
+
+    wx.getSetting({
+      success: (res) => {
+        if (res.authSetting && res.authSetting['scope.userLocation']) {
+          openPicker();
+          return;
+        }
+
+        wx.authorize({
+          scope: 'scope.userLocation',
+          success: openPicker,
+          fail: () => {
+            wx.toast({ title: '请先开启定位权限', icon: 'none' });
+          }
+        });
       },
-      fail: (err) => {
-        if (err.errMsg && err.errMsg.includes('cancel')) return;
-        wx.toast({ title: '选择位置失败', icon: 'none' });
-      }
+      fail: openPicker
     });
   },
 

@@ -1,5 +1,70 @@
 # 开发日志
 
+## 2026-04-26 - 本次会话
+
+### 改动记录
+
+#### 1. 修复联系人数据解析
+- **文件**: `utils/deviceService.js`
+- **问题**: 后端返回 `{电话: "xxx"}`，但代码解析的是 `item['名称']` 和 `item['手机号']`
+- **修复**: 改解析逻辑匹配实际返回格式
+
+#### 2. 修改 Mock 联系人数据格式
+- **文件**: `server/app.js`
+- **改动**: initData 中联系人格式从 `{名称: '张三', 手机号: '138'}` 改为 `{电话: '15053957932'}`
+- **改动**: `/user/addPhoneNumber`、`/user/deletePhone` 接口同步更新
+
+#### 3. 修复 Mock 绑定设备接口 bug
+- **文件**: `server/app.js`
+- **问题**: `/user/bind/userDeviceLogin` 中 `deviceSn` 未定义
+- **修复**: 从请求中获取 deviceSn 参数
+
+#### 4. 新增 Mock 图片静态服务
+- **文件**: `server/app.js`
+- **问题**: `/images` 路径返回 500
+- **修复**: 添加 `/images` 静态资源映射
+
+#### 5. 新增安装位置接口
+- **文件**: `server/app.js`
+- **新增**: `GET /user/getInstallLocation` - 读取用户自定义安装位置
+
+#### 6. 修复设置页位置选择
+- **文件**: `pages/setting/setting.js`
+- **改动**:
+  - 添加权限检查 (`wx.getSetting` + `wx.authorize`)
+  - 选完后立即保存到 `/device/updateLocation`
+  - 传入当前设备坐标作为初始点
+
+#### 7. 修复位置选择权限
+- **文件**: `app.json`
+- **问题**: chooseLocation 报 "api need to be declared in requiredPrivateInfos"
+- **修复**: 在 `requiredPrivateInfos` 添加 `chooseLocation`
+
+---
+
+### API接口清单
+
+| 接口 | 方法 | 状态 |
+|------|------|------|
+| /system/log | POST | ✅ |
+| /user/getMainMessage | GET | ✅ |
+| /user/getMessage | POST | ✅ |
+| /user/bind/status | GET | ✅ |
+| /user/bind/device | POST | ✅ |
+| /user/bind/userDeviceLogin | POST | ✅ |
+| /user/userBindPhone | POST | ✅ |
+| /user/getLocation | GET | ✅ |
+| /user/getInstallLocation | GET | ✅ (新增) |
+| /user/userGetPhone | GET | ✅ |
+| /user/addPhoneNumber | POST | ✅ |
+| /user/deletePhone | DELETE | ✅ |
+| /user/getRecord | GET | ✅ |
+| /device/updateLocation | POST | ✅ (新增) |
+| /setting/list | GET | ✅ |
+| /setting/update | POST | ✅ |
+
+---
+
 ## 2026-04-12 - 无后端前端调试
 
 ### 目标
