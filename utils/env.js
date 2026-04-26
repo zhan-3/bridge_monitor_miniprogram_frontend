@@ -2,12 +2,12 @@ const { miniProgram } = wx.getAccountInfoSync()
 const { envVersion } = miniProgram
 
 let env = {
-  baseURL: 'http://120.46.84.175:8080'
+  baseURL: 'http://localhost:8080'
 }
 switch (envVersion) {
   // 开发版
   case 'develop':
-    env.baseURL = 'http://120.46.84.175:8080'
+    env.baseURL = 'http://localhost:8080'
     break;
   // 体验版
   case 'trial':

@@ -106,7 +106,7 @@ export function buildMarkers(device) {
     latitude: lat,
     longitude: lng,
     snippet: device.address || '未知地址',
-    iconPath: '/images/map.png',
+    iconPath: '/images/marker.png',
     width: 32,
     height: 42,
     callout: {
