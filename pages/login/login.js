@@ -32,23 +32,15 @@ Page({
         setStorage('userInfo', userInfo);
 
         if (nickName && avatarUrl) {
-          // 检查设备绑定状态（data 为 SN 数组或空字符串 ""）
-          const bindRes = await http.get('/user/bind/status');
-          const hasBound = bindRes.code === 1 && Array.isArray(bindRes.data) && bindRes.data.length > 0;
-          if (hasBound) {
-            // 已绑定设备，直接进入首页
-            this.setData({ step: 4 });
-            setTimeout(() => {
-              wx.switchTab({ url: '/pages/home/home' });
-            }, 500);
-          } else {
-            // 未绑定设备，进入第3步（引导绑定）
-            this.setData({ step: 3 });
-          }
-        } else {
-          this.setData({ step: 2 });
+          // 直接进入首页，绑定设备不是登录的必要条件
+          this.setData({ step: 4 });
+          setTimeout(() => {
+            wx.switchTab({ url: '/pages/home/home' });
+          }, 500);
         }
-      }
+        } else {
+          this.setData({ step: 3 });
+        }
     } catch (err) {
       console.log('获取用户状态失败，需重新登录');
     }

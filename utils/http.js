@@ -47,6 +47,7 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
       success(res) {
         const { statusCode, data } = res
 
+        // === HTTP状态码处理 ===
         if (statusCode === 401) {
           wx.modal({
             content: '登录已失效，请重新登录',
@@ -71,6 +72,7 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
           return
         }
 
+        // === 业务码处理 ===
         if (!data || typeof data.code === 'undefined') {
           wx.toast({ title: '返回数据异常', icon: 'error' })
           reject(res)
@@ -82,6 +84,7 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
           return
         }
 
+        // 业务码 0 表示失败
         wx.toast({
           title: data.msg || data.message || '请求失败',
           icon: 'error'
@@ -99,6 +102,7 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
   })
 }
 
+// === 保持你原来的调用方式 ===
 export default {
   get(url, data, header) {
     return request({ url, method: 'GET', data, header })

@@ -148,11 +148,11 @@ app.post('/user/bind/userDeviceLogin', (req, res) => {
     return response(res, 0, '请先绑定手机号', null)
   }
 
-  const deviceSn = req.body.deviceSn || req.query.deviceSn
-  if (!deviceSn) {
-    log(req, res, 0)
-    return response(res, 0, '设备序列号不能为空', null)
-  }
+  // const deviceSn = req.query.deviceSn
+  // if (!deviceSn) {
+  //   log(req, res, 0)
+  //   return response(res, 0, '设备序列号不能为空', null)
+  // }
 
   const device = DB.devices.get(deviceSn)
   if (!device) {
