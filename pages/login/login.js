@@ -144,11 +144,19 @@ Page({
         setTimeout(() => {
           wx.switchTab({ url: '/pages/home/home' });
         }, 500);
-      } catch (err) {
-          wx.hideLoading();
-          console.error('保存用户信息失败：', err);
+    } catch (err) {
+        wx.hideLoading();
+        console.error('保存用户信息失败：', err);
+        const cachedUserInfo = getStorage('userInfo');
+        if (cachedUserInfo && cachedUserInfo.nickName && cachedUserInfo.avatarUrl) {
+          wx.toast({ title: '授权成功（缓存）', icon: 'success' });
+          setTimeout(() => {
+            wx.switchTab({ url: '/pages/home/home' });
+          }, 500);
+        } else {
           wx.toast({ title: '保存失败，请重试', icon: 'none' });
         }
+      }
       },
       fail: (err) => {
         if (err.errMsg.includes('cancel')) {
