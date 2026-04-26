@@ -46,7 +46,14 @@ App({
     this.setToken(device.token)
   },
 
-  onLaunch() {
+  onLaunch(options) {
+    if (options && options.scene) {
+      const sn = decodeURIComponent(options.scene);
+      if (sn) {
+        this.globalData.pendingSN = sn;
+      }
+    }
+
     const token = getStorage('token')
     const isLogin = getStorage('isLogin')
     const deviceTokens = getStorage('deviceTokens') || []

@@ -79,11 +79,11 @@ export async function loadDeviceContacts(authToken, deviceId) {
       Authorization: `Bearer ${authToken}`
     });
     if (phoneRes.code === 1 && Array.isArray(phoneRes.data)) {
-      // 后端返回中文 key：{"名称": "张三", "手机号": "13800138000"}
+      // 后端返回 {"电话": "15053957932"}
       return phoneRes.data.map((item, index) => ({
         id: 'c' + index,
-        name: item['名称'] || item.name || '',
-        phone: item['手机号'] || item.phone || ''
+        name: '',
+        phone: item['电话'] || item.phone || ''
       }));
     }
   } catch (err) {

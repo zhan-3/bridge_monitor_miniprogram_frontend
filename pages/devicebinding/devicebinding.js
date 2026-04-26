@@ -56,12 +56,16 @@ Page({
     } else {
       setStorage('isLogin', false);
       this.setData({ isLogin: false });
+      const sn = this.data.deviceSN || getApp().globalData.pendingSN || '';
+      const redirectUrl = sn
+        ? `/pages/devicebinding/devicebinding?sn=${encodeURIComponent(sn)}`
+        : '/pages/devicebinding/devicebinding';
       await wx.modal({
         content: '请先登录后再绑定设备',
         showCancel: false
       });
       wx.redirectTo({
-        url: '/pages/login/login?redirect=bind-device'
+        url: `/pages/login/login?redirect=${encodeURIComponent(redirectUrl)}`
       });
     }
   },
@@ -182,8 +186,11 @@ Page({
       console.log('[bindDevice] 当前初始token:', currentToken);
       console.log('[bindDevice] 请求绑定设备, SN:', sn);
 
-      // 后端使用 @RequestParam，deviceSn 需通过 URL 查询参数传递
-      let bindRes = await http.post(`/user/bind/device?deviceSn=${encodeURIComponent(sn)}`, {}, {
+      // deviceSn 通过 URL 查询参数传递
+      let bindRes = await http.post(`/user/bind/device?deviceSn=${encodeURIComponent(sn)}&deviceId=${encodeURIComponent(sn)}`, {
+        deviceSn: sn,
+        deviceId: sn
+      }, {
         Authorization: `Bearer ${currentToken}`
       }, true);
 
@@ -191,7 +198,10 @@ Page({
 
       if (bindRes.code === 1 && bindRes.data === '绑定成功') {
         console.log('[bindDevice] 设备已绑定，尝试获取设备token...');
-        bindRes = await http.post(`/user/bind/userDeviceLogin?deviceSn=${encodeURIComponent(sn)}`, {}, {
+        bindRes = await http.post(`/user/bind/userDeviceLogin?deviceSn=${encodeURIComponent(sn)}&deviceId=${encodeURIComponent(sn)}`, {
+          deviceSn: sn,
+          deviceId: sn
+        }, {
           Authorization: `Bearer ${currentToken}`
         }, true);
         console.log('[bindDevice] /user/bind/userDeviceLogin 响应:', JSON.stringify(bindRes));
