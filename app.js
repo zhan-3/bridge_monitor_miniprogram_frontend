@@ -8,6 +8,7 @@ App({
   globalData: {
     userInfo: null,
     token: '',
+    loginToken: '',         // 登录token（与设备token分离，不受switchDevice影响）
     hasBaseLogin: false,    // 是否已完成基础登录（获取初始token）
     hasDeviceBound: false,  // 是否已绑定设备（获取完整token）
     alarmTemplateId: 'LmNsyQCK_araAosSu9UKOyQKnjNMIB1xLU0qGxqIx4o',
@@ -55,12 +56,14 @@ App({
     }
 
     const token = getStorage('token')
+    const loginToken = getStorage('loginToken') || ''
     const isLogin = getStorage('isLogin')
     const deviceTokens = getStorage('deviceTokens') || []
     const currentSn = getStorage('currentSn') || ''
 
     if (token && isLogin) {
       this.globalData.token = token
+      this.globalData.loginToken = loginToken || token
       this.globalData.hasBaseLogin = true
     }
 

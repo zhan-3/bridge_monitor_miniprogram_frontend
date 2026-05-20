@@ -182,7 +182,7 @@ Page({
     try {
       wx.showLoading({ title: '绑定设备中...', mask: true });
 
-      const currentToken = getStorage('token');
+      const currentToken = getStorage('loginToken') || getStorage('token');
       console.log('[bindDevice] 当前初始token:', currentToken);
       console.log('[bindDevice] 请求绑定设备, SN:', sn);
 

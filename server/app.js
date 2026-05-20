@@ -281,7 +281,7 @@ app.get('/user/getInstallLocation', (req, res) => {
 
 app.get('/user/userGetPhone', (req, res) => {
   const sn = req.query.deviceSn || getDeviceSnFromToken(req.headers.authorization)
-  const contacts = DB.contacts.get(sn) || DB.contacts.values().next().value || []
+  const contacts = DB.contacts.get(sn) || []
 
   log(req, res, 1)
   response(res, 1, 'success', contacts)
@@ -289,11 +289,11 @@ app.get('/user/userGetPhone', (req, res) => {
 
 app.post('/user/addPhoneNumber', (req, res) => {
   const sn = getDeviceSnFromToken(req.headers.authorization)
-  const { number } = req.query
+  const { number, name } = req.query
 
   if (number && sn) {
     const contacts = DB.contacts.get(sn) || []
-    contacts.push({ '电话': number })
+    contacts.push({ '电话': number, '名称': name || '' })
     DB.contacts.set(sn, contacts)
   }
 

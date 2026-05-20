@@ -1,44 +1,128 @@
 # 开发日志
 
-## 2026-04-26 - 本次会话
+## 2026-05-20 - Token 覆写 Bug 修复
+
+### 问题
+登录后点进设备详情页再绑定新设备，Mock 返回"请先绑定手机号"。根因是 `switchDevice()` 把 storage 里的登录 token 覆写成了设备 token，`bindDevice()` 拿到的 token 后端查不到用户。
+
+### 改动
+
+| 文件 | 改动 |
+|------|------|
+| `pages/login/login.js:83-84` | `doBaseLogin` 成功后额外保存 `loginToken` 到 storage（不受 switchDevice 影响） |
+| `app.js:11` | `globalData` 新增 `loginToken` 字段 |
+| `app.js:59,66` | `onLaunch` 从 storage 恢复 `loginToken` |
+| `pages/devicebinding/devicebinding.js:185` | `getStorage('token')` → `getStorage('loginToken') \|\| getStorage('token')` |
+
+### 影响范围
+纯前端改动，后端无感知。不影响其他流程（其他接口要么用自定义 Authorization 头带设备 token，要么原本就该用登录 token）。
+
+---
+
+## 2026-05-20 - Mock 联系人 Fallback Bug 修复
+
+### 问题
+非第一个设备的联系人删除后提示成功，但重新进入页面后联系人又出现。根因是 Mock 的 `GET /user/userGetPhone` 在设备无联系人时 fallback 返回了第一个设备的联系人数据，导致删除操作实际上删的是空数组，而重新加载时又从 fallback 拿到了未删除的数据。
+
+### 改动
+
+| 文件 | 改动 |
+|------|------|
+| `server/app.js:284` | 去掉 `DB.contacts.values().next().value` fallback，设备无联系人时直接返回 `[]` |
+
+---
+
+## 2026-05-20 - 联系人姓名不持久化修复
+
+### 问题
+添加联系人时填了姓名，首次新增能正常显示，但重新进入页面后姓名消失只剩电话。
+
+### 根因
+两处都有问题：
+1. **Mock `addPhoneNumber`**（`server/app.js:292`）：只读了 `number` 参数，没有读 `name`，存的数据只有 `{电话: "xxx"}`
+2. **前端 `loadDeviceContacts`**（`utils/deviceService.js:85`）：`name` 硬编码为 `''`，不从返回数据中读取
+
+### 改动
+
+| 文件 | 改动 |
+|------|------|
+| `server/app.js:292,296` | 读取 `name` 参数，存入 `{电话: number, 名称: name}` |
+| `utils/deviceService.js:82,85` | 从返回数据中读取 `item['名称'] \|\| item.name`，而不是硬编码空字符串 |
+
+### 暂缓之计 — 本地姓名缓存
+真实后端不返 `名称`，前端加了一层本地缓存：添加联系人时把 phone→name 映射存入 `contactNameCache`，加载时后端没返就从缓存补。
+
+| 文件 | 改动 |
+|------|------|
+| `utils/deviceService.js:3,87-92` | 导入 `getStorage`，加载联系人时查 `contactNameCache` 补姓名 |
+| `pages/device-detail/device-detail.js:2,147-149` | 导入 `setStorage`，添加联系人时更新 `contactNameCache` |
+
+### 待办
+- [ ] 确认真实后端是否返回联系人姓名字段，如不返需后端加 `名称` 字段
+
+---
+
+## 2026-04-26 - 本次会话（完整记录）
+
+### 会话周期（按时间线）
+
+| # | 时间段 | 焦点 |
+|---|--------|------|
+| 1 | 02:38-03:05 | 登录流程整改 + 扫码绑定流程设计 |
+| 2 | 05:47-06:20 | 扫码自动绑定完善 + redirect 跳转逻辑 |
+| 3 | 08:11-08:13 | 绑定设备请求传参方式修复 |
+| 4 | 09:27-09:30 | 联系人数据格式对齐 + mock 后端改造 |
+| 5 | 10:07-10:28 | Mock 图片静态服务 |
+| 6 | 11:01 | 设置页位置选择 bug |
+
+---
 
 ### 改动记录
 
-#### 1. 修复联系人数据解析
+#### 1. 登录流程 — 移除强制设备绑定检查（会话#1）
+- **文件**: `pages/login/login.js`
+- **问题**: 第34-47行在用户授权后检查 `/user/bind/status`，未绑定设备则强制停留在 step 3 引导绑定页
+- **分析**: 绑定报警设备不是登录的必要条件，用户应可以直接进入首页
+- **修复**: 用户完成信息授权后直接进入首页，绑定改为可选（通过首页或个人中心引导）
+
+#### 2. 扫码自动绑定流程（会话#1-#2）
+- **涉及文件**: `app.js`、`pages/devicebinding/devicebinding.js`、`pages/login/login.js`
+- **完整链路**:
+  ```
+  扫码 → devicebinding.js onLoad → 未登录 → 跳转 login?redirect=...
+       → 登录完成 → 跳回 devicebinding?sn=xxx → autoBindDevice(sn) → 首页
+  ```
+- **app.js**: `onLaunch` 新增全局 `options.scene` 参数处理，存入 `globalData.pendingSN`
+- **devicebinding.js**: 跳转登录时携带 sn 参数，回到绑定页后自动触发绑定
+- **login.js**: redirect 跳转仅在**整个登录流程彻底完成后**（confirmPhone 后）执行
+
+#### 3. 修复绑定设备传参方式（会话#3）
+- **文件**: `pages/devicebinding/devicebinding.js`
+- **问题**: `http.post(\`/user/bind/device?deviceSn=\${encodeURIComponent(sn)}\`, {}, {...})` 把 `deviceSn` 放在 URL query 上，但后端从请求体 body 解析，参数传不过去
+- **修复**: 改为 `http.post('/user/bind/device', { deviceSn: sn }, {...})`
+- **同样问题**: `userDeviceLogin` 接口同步修复
+
+#### 4. 修复联系人数据解析（会话#4）
 - **文件**: `utils/deviceService.js`
 - **问题**: 后端返回 `{电话: "xxx"}`，但代码解析的是 `item['名称']` 和 `item['手机号']`
 - **修复**: 改解析逻辑匹配实际返回格式
 
-#### 2. 修改 Mock 联系人数据格式
+#### 5. 重写 Mock 后端（会话#4）
 - **文件**: `server/app.js`
-- **改动**: initData 中联系人格式从 `{名称: '张三', 手机号: '138'}` 改为 `{电话: '15053957932'}`
-- **改动**: `/user/addPhoneNumber`、`/user/deletePhone` 接口同步更新
+- **改动**:
+  - initData 中联系人格式从 `{名称: '张三', 手机号: '138'}` 改为 `{电话: '15053957932'}`
+  - `/user/addPhoneNumber`、`/user/deletePhone` 接口同步更新
+  - 修复 `/user/bind/userDeviceLogin` 中 `deviceSn` 未定义 bug
+  - 添加 `/images` 静态资源映射，解决中文图标路径 500 问题
+  - 新增 `GET /user/getInstallLocation` 安装位置接口
 
-#### 3. 修复 Mock 绑定设备接口 bug
-- **文件**: `server/app.js`
-- **问题**: `/user/bind/userDeviceLogin` 中 `deviceSn` 未定义
-- **修复**: 从请求中获取 deviceSn 参数
-
-#### 4. 新增 Mock 图片静态服务
-- **文件**: `server/app.js`
-- **问题**: `/images` 路径返回 500
-- **修复**: 添加 `/images` 静态资源映射
-
-#### 5. 新增安装位置接口
-- **文件**: `server/app.js`
-- **新增**: `GET /user/getInstallLocation` - 读取用户自定义安装位置
-
-#### 6. 修复设置页位置选择
-- **文件**: `pages/setting/setting.js`
+#### 6. 修复设置页位置选择（会话#6）
+- **文件**: `pages/setting/setting.js`、`app.json`
 - **改动**:
   - 添加权限检查 (`wx.getSetting` + `wx.authorize`)
   - 选完后立即保存到 `/device/updateLocation`
   - 传入当前设备坐标作为初始点
-
-#### 7. 修复位置选择权限
-- **文件**: `app.json`
-- **问题**: chooseLocation 报 "api need to be declared in requiredPrivateInfos"
-- **修复**: 在 `requiredPrivateInfos` 添加 `chooseLocation`
+  - `app.json`: `requiredPrivateInfos` 添加 `chooseLocation` 声明
 
 ---
 
@@ -62,6 +146,21 @@
 | /device/updateLocation | POST | ✅ (新增) |
 | /setting/list | GET | ✅ |
 | /setting/update | POST | ✅ |
+
+---
+
+## 2026-04-18 - Git 隐私信息排查
+
+### 背景
+第一次提交后担心 git 历史包含敏感信息，进行排查。
+
+### 发现的问题
+
+| 隐私信息 | 位置 | 严重程度 |
+|---------|------|----------|
+| 微信 AppID | `project.config.json` | 🔴 高危 |
+
+已提交的首次 commit 中包含完整的小程序 AppID，需清理。
 
 ---
 

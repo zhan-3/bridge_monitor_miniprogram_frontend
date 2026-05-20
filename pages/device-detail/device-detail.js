@@ -1,5 +1,5 @@
 import http from '../../utils/http';
-import { getStorage } from '../../utils/storage';
+import { getStorage, setStorage } from '../../utils/storage';
 import { loadDeviceData, loadDeviceContacts, buildMarkers } from '../../utils/deviceService';
 import { DEVICE_STATUS_MAP } from '../../utils/constants';
 
@@ -143,6 +143,11 @@ Page({
 
       wx.hideLoading();
       if (res.code === 1) {
+        // 本地缓存姓名，后端不返时回退用
+        const nameCache = getStorage('contactNameCache') || {};
+        nameCache[tempContactPhone] = tempContactName;
+        setStorage('contactNameCache', nameCache);
+
         const newContact = {
           id: 'c' + Date.now(),
           name: tempContactName,
