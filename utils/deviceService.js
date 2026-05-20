@@ -1,6 +1,7 @@
 // 设备数据加载公共服务，供 device-detail 和 setting 页共用
 import http from './http';
 import { DEVICE_STATUS_MAP } from './constants';
+import { getStorage } from './storage';
 
 /**
  * 加载设备基本信息（名称、状态、GPS位置）
@@ -79,12 +80,17 @@ export async function loadDeviceContacts(authToken, deviceId) {
       Authorization: `Bearer ${authToken}`
     });
     if (phoneRes.code === 1 && Array.isArray(phoneRes.data)) {
-      // 后端返回 {"电话": "15053957932"}
-      return phoneRes.data.map((item, index) => ({
-        id: 'c' + index,
-        name: '',
-        phone: item['电话'] || item.phone || ''
-      }));
+      // 后端返回 {"电话": "15053957932", "名称": "张三"}
+      // 真实后端可能不返名称，用本地缓存补
+      const nameCache = getStorage('contactNameCache') || {};
+      return phoneRes.data.map((item, index) => {
+        const phone = item['电话'] || item.phone || '';
+        return {
+          id: 'c' + index,
+          name: item['名称'] || item.name || nameCache[phone] || '',
+          phone
+        };
+      });
     }
   } catch (err) {
     console.error('[deviceService] 获取联系人失败：', err);

@@ -80,6 +80,8 @@ Page({
 
       const app = getApp();
       app.setToken(res.data);
+      app.globalData.loginToken = res.data;
+      setStorage('loginToken', res.data);
       app.globalData.hasBaseLogin = true;
       setStorage('isLogin', true);
 
