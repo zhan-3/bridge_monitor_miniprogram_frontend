@@ -170,3 +170,34 @@
   font-size: 12px;
   color: #bbb;
 }
+
+.phone-banner {
+  background: #fff8e1;
+  border: 1px solid #ffe082;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.phone-banner-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.phone-banner-text {
+  flex: 1;
+  font-size: 13px;
+  color: #8d6e00;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.phone-banner-link {
+  font-weight: 600;
+  color: #e86a00;
+  flex-shrink: 0;
+}

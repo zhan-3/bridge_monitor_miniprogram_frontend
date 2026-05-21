@@ -32,14 +32,41 @@ Page({
 
     if (!isLogin || !token) {
       this.setData({ isLogin: false, userInfo: {} });
+      return
+    }
+
+    const userInfo = getStorage('userInfo') || {};
+
+    if (!userInfo.phone) {
+      this.setData({ isLogin: true, userInfo });
+      wx.showModal({
+        title: '请绑定手机号',
+        content: '绑定手机号后才能正常使用报警服务',
+        showCancel: false,
+        confirmText: '去绑定'
+      }).then(() => {
+        wx.navigateTo({ url: '/pages/setting/setting' });
+      });
       return;
     }
 
     const app = getApp();
-    this.setData({ isLogin: true, currentSn: app.globalData.currentSn });
+    this.setData({
+      isLogin: true,
+      hasPhone: true,
+      userInfo,
+      currentSn: app.globalData.currentSn
+    });
+    this.loadUserInfo();
     this.loadAllDevices();
+    this.startPolling();
+  },
 
-    // 定时轮询，实时感知报警状态变化
+  goBindPhone() {
+    wx.navigateTo({ url: '/pages/setting/setting' });
+  },
+
+  startPolling() {
     if (this.pollTimer) clearInterval(this.pollTimer);
     this.pollTimer = setInterval(() => this.loadAllDevices(), 7000);
   },
@@ -54,21 +81,25 @@ Page({
     this.pollTimer = null;
   },
 
-  // 从后端获取用户信息
   async loadUserInfo() {
     try {
       const res = await http.get('/user/getMainMessage');
       if (res.code === 1 && res.data) {
-        const { nickName, avatarUrl, phone } = res.data;
-        const userInfo = { nickName, avatarUrl, phone };
+        const cached = getStorage('userInfo') || {};
+        const userInfo = {
+          nickName: res.data.nickName || cached.nickName || '',
+          avatarUrl: res.data.avatarUrl || cached.avatarUrl || '',
+          phone: res.data.phone || cached.phone || ''
+        };
         setStorage('userInfo', userInfo);
         this.setData({ userInfo });
+        return;
       }
     } catch (err) {
       console.error('获取用户信息失败：', err);
-      const userInfo = getStorage('userInfo') || {};
-      this.setData({ userInfo });
     }
+    const userInfo = getStorage('userInfo') || {};
+    this.setData({ userInfo });
   },
 
   // 遍历所有已绑定设备的token，构建设备列表
@@ -121,6 +152,10 @@ Page({
     wx.navigateTo({
       url: '/pages/login/login'
     });
+  },
+
+  goSetting() {
+    wx.navigateTo({ url: '/pages/setting/setting' });
   },
 
   goBindDevice() {
