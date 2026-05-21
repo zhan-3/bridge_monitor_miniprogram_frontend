@@ -1,5 +1,40 @@
 <view class="setting-container">
   <scroll-view class="setting-scroll" scroll-y>
+    <!-- 用户资料卡片 -->
+    <white-card title="👤 个人资料" customClass="setting-module-card">
+      <view class="profile-card">
+        <view class="profile-avatar-row">
+          <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+            <image class="profile-avatar" src="{{userInfo.avatarUrl || '/images/avatar.png'}}" mode="aspectFill" />
+          </button>
+          <view class="profile-info">
+            <input class="profile-nickname" type="nickname" placeholder="点击填写昵称" value="{{userInfo.nickName}}" bindinput="onNicknameInput" maxlength="20" />
+            <view class="profile-phone">
+              <text wx:if="{{userInfo.phone}}">{{userInfo.phone}}</text>
+              <text wx:else class="phone-unbind">未绑定手机号</text>
+            </view>
+          </view>
+        </view>
+        <button class="bind-phone-btn" wx:if="{{!userInfo.phone}}" bindtap="showPhoneModal">
+          <text class="bind-phone-icon">📱</text>
+          <text>绑定手机号</text>
+        </button>
+      </view>
+    </white-card>
+
+    <!-- 手机号绑定弹窗 -->
+    <view class="modal-mask" wx:if="{{showPhoneModal}}" bindtap="hidePhoneModal"></view>
+    <view class="modal-container phone-modal" wx:if="{{showPhoneModal}}">
+      <view class="modal-title">绑定手机号</view>
+      <view class="modal-desc">手机号将作为紧急联系人，报警时自动呼叫</view>
+      <input class="modal-input {{phoneError ? 'input-error' : ''}}" type="number" maxlength="11" placeholder="请输入手机号" bindinput="onPhoneInput" />
+      <text wx:if="{{phoneError}}" class="input-error-tip">请输入正确的手机号（1开头，11位）</text>
+      <view class="modal-btn-group">
+        <custom-button text="取消" type="normal" bind:click="hidePhoneModal" customClass="modal-btn-half"></custom-button>
+        <custom-button text="确定" type="orange" bind:click="confirmPhone" customClass="modal-btn-half" disabled="{{phoneError}}"></custom-button>
+      </view>
+    </view>
+
     <block wx:if="{{isDeviceSetting}}">
       <white-card title="📍 设备位置设置" customClass="setting-module-card">
         <view class="location-card">
