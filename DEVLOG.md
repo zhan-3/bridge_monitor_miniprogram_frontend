@@ -1,5 +1,141 @@
 # 开发日志
 
+## 2026-05-21 - 登录流程重做：3步→2步 + 首页手机号拦截
+
+### 背景
+登录流程冗长（微信登录→填手机号→授权头像昵称），且 `wx.getUserProfile()` 已于 2023 年被微信废弃。用户期望简化登录，同时防止不填手机号就进入首页。
+
+### 方案演进
+
+| 版本 | 方案 | 结果 |
+|------|------|------|
+| v1 | 静默登录，用户无感 | ❌ 一进 app 就自动登录，没有交互 |
+| v2 | `getPhoneNumber` 一键授权（同意后自动拿手机号） | ❌ 无接口权限，无法解密 phoneCode |
+| v3（最终） | `wx.login` → 手动填手机号 → 保存后跳首页 | ✅ |
+| 头像昵称 | 移到设置页，用 `chooseAvatar` + `input type="nickname"` | ✅ |
+
+### 改动
+
+| 文件 | 改动 |
+|------|------|
+| `app.js` | 移除 `silentLogin()` 方法 |
+| `pages/login/login.js` | 从 244 行→79 行，3 步简化为 2 步（微信登录→手动填手机号），移除废弃的 `getUserProfile()`；`confirmPhone` 加 8s 超时保护 |
+| `pages/login/login.wxml` | 精简为两步骤：微信登录按钮 + 手机号输入表单 |
+| `pages/login/login.wxss` | 从 215 行→55 行 |
+| `pages/setting/setting.js` | 新增个人资料模块：`chooseAvatar` 选头像、`nickname input` 填昵称、手动绑手机号 |
+| `pages/setting/setting.wxml` | 顶部新增"个人资料"卡片（头像+昵称+手机号绑定） |
+| `pages/setting/setting.wxss` | 新增资料卡样式 |
+| `pages/home/home.js` | 已登录无手机号时弹 blocking modal 强制跳转设置页；右上"已登录 ›"可点击进设置页；`loadUserInfo` 服务端空字段用本地缓存兜底；`onShow` 同步本地缓存 `userInfo` 到 `setData` |
+| `pages/home/home.wxml` | 登录后右上角显示"已登录 ›"（可点击进设置页） |
+| `pages/home/home.wxss` | 新增 phone-banner 横幅样式（保留作为视觉兜底） |
+| `utils/mockServer.js` | `mockUserInfo.phone` 改为空字符串，/user/getMainMessage 不返回假手机号 |
+| `server/app.js` | `/user/getMainMessage` 不再硬编码 fallback 数据；尝试加过 `/system/phoneLogin` 又移除 |
+
+### 修复的连带 Bug
+
+| # | 问题 | 根因 | 修复 |
+|---|------|------|------|
+| 1 | 保存手机号后不跳首页 | `app.json` 无 `tabBar`，`wx.switchTab` 静默失败 | 全部改为 `wx.reLaunch` |
+| 2 | 头像偶尔丢失 | `loadUserInfo` 用服务端空值 `avatarUrl: ''` 覆盖了本地缓存 | 服务端字段为空时用本地缓存兜底 `res.data.nickName \|\| cached.nickName` |
+| 3 | 头像渲染空白 | `onShow` 读了本地缓存没传给 `setData`，首页用初始空对象渲染 | `setData` 中加 `userInfo` |
+| 4 | "保存中"一直转 | 请求挂起 `loading` 不释放 | 加 8s `setTimeout` 超时自动解锁 |
+
+### 用户流程
+
+```
+打开首页 → 未登录 → 点"登录" → login 页
+                              → 点"微信登录" → wx.login → POST /system/log → token
+                              → 步骤 2：输入手机号 → 保存 → POST /user/userBindPhone
+                              → reLaunch 首页 → onShow 检查有手机号 → 正常使用
+                                                    ↕ 无手机号 → blocking modal → 去设置页绑定
+```
+
+### 边界情况
+
+- **已登录有手机号用户**：打开直接进首页，不受影响
+- **故意跳过手机号**：首页 `onShow` 弹出 blocking modal，只能点"去绑定"
+- **请求超时**：8 秒后自动解锁按钮 + Toast 提示
+- **头像/昵称**：从 `loadUserInfo` 请求失败不覆盖本地缓存，设置页修改后 `POST /user/getMessage` 持久化到服务端
+
+### 影响范围
+纯前端改动 + Mock 服务端微调。后端 API 接口未变（`/system/log` + `/user/userBindPhone` + `/user/getMessage` + `/user/getMainMessage`）。
+
+---
+
+## 2026-05-21 - 重做一键登录：静默登录改为微信授权弹窗
+
+### 背景
+上午改的静默登录让用户一打开小程序就自动登录了，没有授权交互。用户期望的是点击"微信一键登录"按钮→微信底部弹出授权窗口→同意后拿到手机号完成登录。
+
+### 改动方向
+去掉 `app.js` 的自动静默登录，改为 `login` 页的 `<button open-type="getPhoneNumber">` 主动授权流程。Mock 新增 `POST /system/phoneLogin` 接口，接收 `{ code, phoneCode }`，返回 `{ token, phone }`。
+
+### 改动
+
+| 文件 | 改动 |
+|------|------|
+| `app.js` | 移除 `silentLogin()` 方法、`import http`、`onLaunch` 中无需 token 时的静默登录调用 |
+| `pages/login/login.js` | 从静默登录中转页改为 `handlePhoneLogin`：提前调 `wx.login()` 准备 session → 用户点按钮 → `POST /system/phoneLogin` → 存 token/phone → 跳首页 |
+| `pages/login/login.wxml` | 改为"微信一键登录"按钮（`open-type="getPhoneNumber"`）+ 用户协议尾注 |
+| `pages/login/login.wxss` | 一键登录按钮样式（大白圆角按钮+阴影） |
+| `pages/home/home.js` | 恢复 `goLogin` 指向 login 页（之前改为 setting 页）；移除 1.5s 延迟重试（不再需要） |
+| `server/app.js` | 新增 `POST /system/phoneLogin` 接口；修复 `/user/getMainMessage` 不再硬编码 fallback 数据 |
+
+### 完整一键登录流程
+
+```
+用户打开小程序 → login 页
+                 → 点"微信一键登录"按钮
+                 → 微信底部弹出授权窗口（显示手机号）
+                 → 用户点"同意"
+                 → POST /system/phoneLogin { code, phoneCode }
+                 → 返回 { token, phone: "138xxxx" }
+                 → 跳转首页，已登录
+```
+
+### 影响范围
+- **Mock 服务端**：新增接口，需重启生效
+- **正式后端**：需要实现等价的 `POST /system/phoneLogin` 接口，服务端调微信 `phonenumber.getPhoneNumber` 解密 `phoneCode`
+
+---
+
+### 背景
+登录页 3 步流程冗长（微信登录 → 填手机号 → 授权头像昵称），且 `wx.getUserProfile()` 已于 2023 年被微信废弃，返回的昵称头像全部是伪造的默认值。
+
+### 改动
+
+| 文件 | 改动 |
+|------|------|
+| `app.js` | 新增 `silentLogin()`，`onLaunch` 无存储 token 时自动 `wx.login` → `POST /system/log`，用户无感 |
+| `pages/login/login.js` | 从 244 行→75 行，删除 3 步流程、废除的 `getUserProfile`、手机号弹窗。降级为自动登录中转页 |
+| `pages/login/login.wxml` | 从 3 步按钮+弹窗→logo+加载动画+失败重试 |
+| `pages/login/login.wxss` | 从 215 行→55 行，删除步骤指示条和弹窗样式 |
+| `pages/setting/setting.js` | 新增用户资料模块：`chooseAvatar` 选头像、`nickname input` 填昵称、手动绑手机号、自动调 `POST /user/getMessage` 保存 |
+| `pages/setting/setting.wxml` | 顶部新增"个人资料"卡片，含头像点击选择、昵称编辑、手机号绑定入口+弹窗 |
+| `pages/setting/setting.wxss` | 新增资料卡样式 |
+| `pages/home/home.js` | 新增 1.5s 延迟重试（对付异步静默登录时序）；"登录"按钮改指向设置页 |
+
+### 用户流程变化
+
+```
+之前: 打开→首页(未登录)→登录页(点3次)→首页
+现在: 打开→静默登录→首页(已登录)
+                         ↕ 失败才显示登录页
+      个人资料→设置页修改头像/昵称/绑定手机号
+```
+
+### 边界情况
+
+- **已登录用户**（storage 有 token）：一切照旧，不受影响
+- **静默登录失败**（网络/后端异常）：login 页显示错误文案 + 重试按钮
+- **首页时序竞争**：`onShow` 执行时静默登录可能还没完成，加 1.5s 延迟重试兜底
+- **设备绑定**：仍需要 `loginToken`（初始 token），保留 `setStorage('loginToken')` 调用
+
+### 影响范围
+纯前端改动。后端 API 零改动，无新增接口。
+
+---
+
 ## 2026-05-20 - Token 覆写 Bug 修复
 
 ### 问题
