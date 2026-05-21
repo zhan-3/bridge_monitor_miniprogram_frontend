@@ -1,8 +1,14 @@
 import { loadDeviceData, buildMarkers } from '../../utils/deviceService';
 import http from '../../utils/http';
+import { getStorage, setStorage } from '../../utils/storage';
+import { isValidPhone } from '../../utils/validators';
 
 Page({
   data: {
+    userInfo: {},
+    showPhoneModal: false,
+    phone: '',
+    phoneError: false,
     autoRecord: true,
     recordQualityList: ['标准质量', '高清质量', '无损质量'],
     qualityIndex: 1,
@@ -19,11 +25,43 @@ Page({
   },
 
   onLoad(options) {
+    this.loadUserInfo();
     if (options.id) {
       this.setData({ isDeviceSetting: true });
       this.loadDevice(options.id);
     }
     this.loadLocalSetting();
+  },
+
+  loadUserInfo() {
+    const userInfo = getStorage('userInfo') || {};
+    this.setData({ userInfo });
+  },
+
+  onChooseAvatar(e) {
+    const avatarUrl = e.detail.avatarUrl;
+    if (!avatarUrl) return;
+    const userInfo = { ...this.data.userInfo, avatarUrl };
+    setStorage('userInfo', userInfo);
+    this.setData({ userInfo });
+    this.saveUserProfile({ avatarUrl });
+  },
+
+  onNicknameInput(e) {
+    const nickName = e.detail.value;
+    if (!nickName) return;
+    const userInfo = { ...this.data.userInfo, nickName };
+    setStorage('userInfo', userInfo);
+    this.setData({ userInfo });
+    this.saveUserProfile({ nickName });
+  },
+
+  async saveUserProfile(fields) {
+    try {
+      await http.post('/user/getMessage', fields)
+    } catch (err) {
+      console.log('[setting] 保存用户信息失败（已缓存本地）:', err)
+    }
   },
 
   async loadDevice(deviceId) {
@@ -77,6 +115,65 @@ Page({
 
   switchDisconnectWarn(e) {
     this.setData({ disconnectWarn: e.detail.value });
+  },
+
+  showPhoneModal() {
+    this.setData({ showPhoneModal: true, phone: '', phoneError: false });
+  },
+
+  hidePhoneModal() {
+    this.setData({ showPhoneModal: false, phone: '', phoneError: false });
+  },
+
+  onPhoneInput(e) {
+    const phone = e.detail.value;
+    this.setData({ phone, phoneError: phone.length > 0 && !isValidPhone(phone) });
+  },
+
+  async confirmPhone() {
+    const { phone } = this.data;
+    if (!isValidPhone(phone)) {
+      wx.toast({ title: '请输入正确的手机号', icon: 'none' });
+      this.setData({ phoneError: true });
+      return;
+    }
+
+    const token = getStorage('token');
+    if (!token) {
+      wx.toast({ title: '请先完成登录', icon: 'error' });
+      return;
+    }
+
+    // 超时保护：8 秒后自动隐藏 loading
+    wx.showLoading({ title: '保存中...' });
+    const timeoutId = setTimeout(() => {
+      wx.hideLoading();
+      wx.toast({ title: '请求超时，请重试', icon: 'none' });
+    }, 8000);
+
+    try {
+      const res = await http.post('/user/userBindPhone?phone=' + phone, {}, {
+        Authorization: `Bearer ${token}`
+      }, true);
+      clearTimeout(timeoutId);
+      wx.hideLoading();
+
+      if (res.code !== 1) {
+        wx.toast({ title: res.msg || '保存失败', icon: 'none' });
+        return;
+      }
+
+      const userInfo = { ...this.data.userInfo, phone };
+      setStorage('userInfo', userInfo);
+      setStorage('phone', phone);
+      this.setData({ userInfo, showPhoneModal: false });
+      wx.toast({ title: '手机号绑定成功', icon: 'success' });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      wx.hideLoading();
+      console.error('[setting] confirmPhone 异常:', err);
+      wx.toast({ title: '网络异常，请重试', icon: 'none' });
+    }
   },
 
   editDeviceName() {
