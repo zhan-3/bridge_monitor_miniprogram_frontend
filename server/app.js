@@ -218,12 +218,11 @@ app.get('/user/getMainMessage', (req, res) => {
   const token = getUserToken(auth)
   const user = token ? DB.users.get(token) : null
 
-  const phone = user?.phone || '13812345678'
   log(req, res, 1)
   response(res, 1, 'success', {
-    nickName: '测试用户',
-    avatarUrl: 'https://wx.qlogo.cn/mmopen/vi_32/avatar.png',
-    phone
+    nickName: user?.nickName || '',
+    avatarUrl: user?.avatarUrl || '',
+    phone: user?.phone || ''
   })
 })
 

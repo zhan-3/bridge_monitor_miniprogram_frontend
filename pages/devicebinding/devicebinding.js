@@ -230,7 +230,7 @@ Page({
           content: `设备 "${sn}" 绑定成功`,
           showCancel: false
         });
-        wx.switchTab({ url: '/pages/home/home' });
+        wx.reLaunch({ url: '/pages/home/home' });
       } else {
         console.error('[bindDevice] 绑定失败:', bindRes);
         wx.toast({ title: bindRes.msg || '绑定失败', icon: 'none' });

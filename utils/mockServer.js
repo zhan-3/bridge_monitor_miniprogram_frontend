@@ -24,7 +24,7 @@ const mockContacts = [
 const mockUserInfo = {
   nickName: '测试用户',
   avatarUrl: 'https://wx.qlogo.cn/mmopen/vi_32/avatar.png',
-  phone: '13812345678'
+  phone: ''
 }
 
 const mockAudioUrls = [
