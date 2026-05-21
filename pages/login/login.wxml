@@ -2,73 +2,34 @@
   <view class="login-header">
     <view class="logo-icon">🔔</view>
     <text class="title">紧急报警系统</text>
-    <text class="subtitle">登录后可接收报警信息</text>
-  </view>
-
-  <view class="login-steps">
-    <view class="step-item {{step >= 1 ? 'active' : ''}}">
-      <view class="step-num">1</view>
-      <text class="step-text">微信登录</text>
-    </view>
-    <view class="step-line {{step >= 2 ? 'active' : ''}}"></view>
-    <view class="step-item {{step >= 2 ? 'active' : ''}}">
-      <view class="step-num">2</view>
-      <text class="step-text">填写手机</text>
-    </view>
-    <view class="step-line {{step >= 3 ? 'active' : ''}}"></view>
-    <view class="step-item {{step >= 3 ? 'active' : ''}}">
-      <view class="step-num">3</view>
-      <text class="step-text">授权信息</text>
-    </view>
+    <text class="subtitle" wx:if="{{step === 1}}">微信登录后绑定手机号即可使用</text>
+    <text class="subtitle" wx:elif="{{step === 2}}">请填写您的手机号</text>
   </view>
 
   <view class="login-content">
     <block wx:if="{{step === 1}}">
-      <button class="login-btn" bindtap="doBaseLogin">
-        <text class="btn-text">微信登录</text>
+      <button class="login-btn" bindtap="doLogin" disabled="{{loading}}">
+        <text class="btn-text">{{loading ? '登录中...' : '微信登录'}}</text>
       </button>
     </block>
 
     <block wx:elif="{{step === 2}}">
-      <button 
-        class="login-btn primary" 
-        bindtap="showPhoneModal"
-      >
-        <text class="btn-icon">📱</text>
-        <text class="btn-text">填写手机号</text>
-      </button>
+      <view class="phone-section">
+        <input
+          class="phone-input {{phoneError ? 'input-error' : ''}}"
+          type="number"
+          maxlength="11"
+          placeholder="请输入手机号"
+          value="{{phone}}"
+          bindinput="onPhoneInput"
+        />
+        <text wx:if="{{phoneError}}" class="input-error-tip">手机号格式不正确（1开头，11位）</text>
+        <button class="login-btn" bindtap="confirmPhone" disabled="{{loading || phoneError}}">
+          <text class="btn-text">{{loading ? '保存中...' : '确认并进入'}}</text>
+        </button>
+      </view>
     </block>
 
-    <block wx:elif="{{step === 3}}">
-      <button class="login-btn" bindtap="getUserInfo">
-        <text class="btn-icon">👤</text>
-        <text class="btn-text">授权头像昵称</text>
-      </button>
-    </block>
-  </view>
-
-  <view class="step-hint">
-    <text wx:if="{{step === 1}}">点击上方按钮进行微信登录</text>
-    <text wx:elif="{{step === 2}}">填写手机号用于接收报警通知</text>
-    <text wx:elif="{{step === 3}}">授权后可完善您的个人资料</text>
-  </view>
-
-  <!-- 手机号输入弹窗 -->
-  <view class="phone-modal-mask" wx:if="{{showPhoneModal}}"></view>
-  <view class="phone-modal" wx:if="{{showPhoneModal}}">
-    <view class="modal-title">填写手机号</view>
-    <view class="modal-desc">手机号将作为紧急联系人，报警时自动呼叫</view>
-    <input
-      class="modal-input {{phoneError ? 'input-error' : ''}}"
-      type="number"
-      maxlength="11"
-      placeholder="请输入手机号"
-      bindinput="onPhoneInput"
-    />
-    <text wx:if="{{phoneError}}" class="input-error-tip">请输入正确的手机号（1开头，11位）</text>
-    <view class="modal-btns">
-      <button class="modal-btn cancel" bindtap="hidePhoneModal">取消</button>
-      <button class="modal-btn confirm {{phoneError ? 'btn-disabled' : ''}}" bindtap="confirmPhone" disabled="{{phoneError}}">确定</button>
-    </view>
+    <text wx:if="{{errMsg}}" class="error-tip">{{errMsg}}</text>
   </view>
 </view>
