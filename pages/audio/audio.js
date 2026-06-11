@@ -156,20 +156,29 @@ getAllDeviceRecord() {
           return;
         }
 
-        const existingIds = new Set(this.data.audioList.map(a => a.url));
-        let flatList = [];
-        let idGen = this._audioIdGen || 0;
-        this._audioIdGen = idGen;
+        // 建立现有录音的 url → item 映射，保留收藏、播放状态
+        const existingByUrl = {};
+        this.data.audioList.forEach(item => {
+          if (item.url) existingByUrl[item.url] = item;
+        });
 
-        audioUrlList.forEach((url, index) => {
-          if (!url || existingIds.has(url)) return;
-          existingIds.add(url);
-          const recordId = `audio_${++idGen}_${url.split('/').pop()}`;
-          flatList.push(this.formatRecordItem({ url, recordId }));
+        let rebuiltList = [];
+        let idGen = this._audioIdGen || 0;
+
+        audioUrlList.forEach(url => {
+          if (!url) return;
+          if (existingByUrl[url]) {
+            // 已有录音：保留原对象（保持 isCollect、isPlaying 等状态）
+            rebuiltList.push({ ...existingByUrl[url] });
+          } else {
+            const recordId = `audio_${++idGen}_${url.split('/').pop()}`;
+            rebuiltList.push(this.formatRecordItem({ url, recordId }));
+          }
         });
 
         this._audioIdGen = idGen;
-        const finalList = this.initCollectStatus(flatList);
+        // 重新应用收藏状态（从 storage 同步最新的收藏标记）
+        const finalList = this.initCollectStatus(rebuiltList);
         const { currentPlayId, isPlaying } = this.data;
         const resList = finalList.map(item => ({
           ...item,
@@ -210,8 +219,8 @@ getAllDeviceRecord() {
     };
   },
 
-  updateFilteredList() {
-    let list = this.data.audioList.filter(item => {
+  updateFilteredList(srcList) {
+    let list = (srcList || this.data.audioList).filter(item => {
       const ft = this.data.filterType;
       return ft === 'all' || (ft === 'collected' && item.isCollect) || (ft === 'emergency' && item.status === 'emergency');
     });
@@ -561,9 +570,10 @@ getAllDeviceRecord() {
     const index = this.data.audioList.findIndex(a => a.id === currentId);
     if (index === -1) return;
 
-    const list = [...this.data.audioList];
-    const isCollect = !list[index].isCollect;
-    list[index].isCollect = isCollect;
+    const list = this.data.audioList.map((item, i) =>
+      i === index ? { ...item, isCollect: !item.isCollect } : item
+    );
+    const isCollect = list[index].isCollect;
 
     let collectIds = getStorage('collectIds');
     try { collectIds = JSON.parse(collectIds || '[]'); } catch(e) { collectIds = []; }
@@ -576,7 +586,7 @@ getAllDeviceRecord() {
 
     setStorage('collectIds', JSON.stringify(collectIds));
     this.setData({ audioList: list });
-    this.updateFilteredList();
+    this.updateFilteredList(list);
     wx.toast({ title: isCollect ? '已收藏' : '已取消', icon: 'none' });
   },
 
@@ -594,26 +604,26 @@ getAllDeviceRecord() {
 
     if (index === -1 || !currentId) return;
 
-    const isCollect = this.data.audioList[index].isCollect;
+    const currentCollect = this.data.audioList[index].isCollect;
     let collectIds = getStorage('collectIds');
     try { collectIds = JSON.parse(collectIds || '[]'); } catch(e) { collectIds = []; }
-    const newList = [...this.data.audioList];
+    const newList = this.data.audioList.map((item, i) =>
+      i === index ? { ...item, isCollect: !currentCollect } : item
+    );
 
-    if (!isCollect) {
+    if (!currentCollect) {
       collectIds.push(currentId);
-      newList[index].isCollect = true;
       wx.toast({ title: '收藏成功', icon: 'success' });
     } else {
       collectIds = collectIds.filter(id => id !== currentId);
-      newList[index].isCollect = false;
       wx.toast({ title: '已取消', icon: 'none' });
     }
 
     setStorage('collectIds', JSON.stringify(collectIds));
     this.setData({ audioList: newList });
-    this.updateFilteredList();
+    this.updateFilteredList(newList);
     if (this.data.selectedItem) {
-      this.setData({ 'selectedItem.isCollect': !isCollect });
+      this.setData({ 'selectedItem.isCollect': !currentCollect });
     }
     this.hideActionMenu();
   },

@@ -1,7 +1,7 @@
 <view class="setting-container">
   <scroll-view class="setting-scroll" scroll-y>
-    <!-- 用户资料卡片 -->
-    <white-card title="👤 个人资料" customClass="setting-module-card">
+    <!-- 用户资料卡片（仅主页进入时展示） -->
+    <white-card wx:if="{{!isDeviceSetting}}" title="👤 个人资料" customClass="setting-module-card">
       <view class="profile-card">
         <view class="profile-avatar-row">
           <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
@@ -142,7 +142,7 @@
     />
   </view>
   <view class="modal-btn-group">
-    <custom-button text="取消" type="normal" bind:click="closeEditNameModal" customClass="modal-btn-half"></custom-button>
-    <custom-button text="保存" type="orange" bind:click="saveName" customClass="modal-btn-half"></custom-button>
+    <view class="modal-btn cancel" bindtap="closeEditNameModal" hover-class="btn-press">取消</view>
+    <view class="modal-btn confirm" bindtap="saveName" hover-class="btn-press">保存</view>
   </view>
 </view>
