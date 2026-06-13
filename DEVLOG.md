@@ -1,5 +1,52 @@
 # 开发日志
 
+## 2026-06-13 - 前端性能优化：并行轮询/下拉刷新/加载状态/死代码清理
+
+### 背景
+首页轮询串行（7s×N 设备）、无下拉刷新、无加载状态；audio 页每次 setData 整个数组、长按传完整对象；audio.wxml 通过 `data-item="{{item}}"` 暴露整个对象到模板；devicebinding.js 有未调用的死代码；多处 page.json 引用不再使用的 `custom-button` 组件；`wx-audio-manager` 依赖已无代码引用；setting 页 7 次独立的 `wx.getStorageSync` 调用；大量调试 console.log 含 token 信息。
+
+### 改动
+
+| 文件 | 改动 |
+|------|------|
+| `pages/home/home.js` | `loadAllDevices` 改为 `Promise.allSettled` 并行请求；轮询间隔 7s→15s；添加 `onPullDownRefresh`；添加 `pageLoading` 初始加载状态 |
+| `pages/home/home.json` | 添加 `enablePullDownRefresh: true` |
+| `pages/home/home.wxml` | 加载状态 spinner UI（`<block wx:else>` 包裹） |
+| `pages/home/home.wxss` | loading-spinner 动画 + 关键帧 |
+| `pages/audio/audio.js` | `getAllDeviceRecord` 对 `audioList` 做 JSON.stringify 脏比较，无变化不 setData；移除 debug console.log |
+| `pages/audio/audio.wxml` | `data-item="{{item}}"` → `data-id="{{item.id}}"` |
+| `pages/device-detail/device-detail.js` | 添加 `isLoading` 状态 + 加载时 spinner；移除 debug console.log |
+| `pages/device-detail/device-detail.wxml` | 加载状态 spinner；`<block wx:else>` 包裹内容区 |
+| `pages/device-detail/device-detail.wxss` | loading-spinner CSS |
+| `pages/devicebinding/devicebinding.js` | 移除 `generateTempDevice()` 死代码 + `deviceTemplates` 常量 |
+| `pages/setting/setting.js` | `loadLocalSetting` 7 次独立 `wx.getStorageSync` → 单 key `localSettings` 对象存储；`saveSetting` 6 次独立 `wx.setStorageSync` → 单次 `setStorage`；向后兼容旧独立 key |
+| `pages/login/login.js` | 移除调试 console.log |
+| `app.js` | 移除 `App onShow/onHide` 和 `deviceTokens已存储` console.log |
+| `pages/audio/audio.json` | 移除废弃的 `custom-button` 组件引用 |
+| `pages/home/home.json` | 同上 |
+| `pages/device-detail/device-detail.json` | 同上 |
+| `pages/login/login.json` | 同上 |
+| `package.json` | 移除未使用的 `wx-audio-manager` 依赖 |
+| `miniprogram_npm/wx-audio-manager/` | 删除文件夹 |
+| `utils/deviceService.js` | 移除调试 console.log |
+| `utils/http.js` | 移除请求日志 console.log（含 token 打印） |
+| `utils/mockServer.js` | 移除 Mock Debug console.log |
+
+### 关键决策
+
+- **`Promise.allSettled` 而非 `Promise.all`**：单个设备状态请求失败不阻塞其他设备
+- **轮询 15s**：平衡实时性与请求频率
+- **脏检查 JSON.stringify**：`JSON.stringify` 比较新旧数组，避免无变化时 setData 触发重渲染
+- **`data-id` 替代 `data-item`**：长按处理器通过 `data-id` 索引 `this.data.audioList` 查对象，避免 WXML 序列化完整对象
+- **`localSettings` 合并存储**：提供向后兼容，检测旧独立 key 存在时自动迁移
+
+### 边界情况
+
+- 首页 polling 使用 `setInterval` 定时器，`onHide`/`onUnload` 清除并置 `null`
+- 首页 `pageLoading` 初始为 `true`，`loadAllDevices` 首次完成后设为 `false`
+- 音频脏检查：`JSON.stringify` 比较只在 `getAllDeviceRecord` 成功返回后执行，网络失败时不污染 `audioList`
+- 设置合并存储：新用户直接读写 `localSettings`，老用户首次访问走迁移路径后回写
+
 ## 2026-05-21 - 登录流程重做：3步→2步 + 首页手机号拦截
 
 ### 背景
