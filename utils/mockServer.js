@@ -99,7 +99,7 @@ function clearLogs() { debugLogs.length = 0 }
 function getLogs() { return debugLogs }
 function setScenario(s) { 
   MockConfig.scenario = s
-  console.log('=== Mock Debug === scenario:', s, '| logs:', debugLogs.length)
+
 }
 function getScenario() { return MockConfig.scenario }
 

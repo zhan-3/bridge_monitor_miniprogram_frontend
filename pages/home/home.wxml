@@ -1,4 +1,11 @@
 <view class="container">
+  <!-- 加载态 -->
+  <view wx:if="{{pageLoading}}" class="loading-screen">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <block wx:else>
   <view class="head-card">
     <view class="head-left">
       <image class="avatar" src="{{userInfo.avatarUrl || '/images/avatar.png'}}" mode="aspectFill" />
@@ -52,4 +59,5 @@
       <text class="empty-hint">点击右上角「＋」添加设备</text>
     </view>
   </white-card>
+  </block>
 </view>

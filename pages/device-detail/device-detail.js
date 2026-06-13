@@ -7,6 +7,7 @@ Page({
   data: {
     device: null,
     markers: [],
+    isLoading: true,
     showEditNameModal: false,
     showAddContactModal: false,
     tempName: '',
@@ -27,8 +28,7 @@ Page({
         app.switchDevice(options.id);
       }
       const authToken = deviceEntry ? deviceEntry.token : '';
-      console.log('[device-detail] onLoad - deviceEntry:', deviceEntry);
-      console.log('[device-detail] onLoad - authToken:', authToken ? authToken.substring(0, 30) + '...' : 'empty');
+
       this.setData({
         currentSn: options.id,
         currentDeviceToken: authToken
@@ -46,6 +46,7 @@ Page({
 
   // 从后端API加载设备数据（使用 deviceService 统一逻辑）
   async loadDeviceFromAPI() {
+    this.setData({ isLoading: true });
     const authToken = this.data.currentDeviceToken;
     const currentSn = this.data.currentSn;
 
@@ -53,7 +54,7 @@ Page({
     device.contacts = await loadDeviceContacts(authToken, currentSn);
     const markers = buildMarkers(device);
 
-    this.setData({ device, markers });
+    this.setData({ device, markers, isLoading: false });
   },
 
   editName() {

@@ -2,13 +2,6 @@ import http from '../../utils/http';
 import { getStorage, setStorage } from '../../utils/storage';
 import { isValidSN } from '../../utils/validators';
 
-const deviceTemplates = [
-  { name: '烟雾报警器', prefix: 'YW' },
-  { name: '燃气报警器', prefix: 'RQ' },
-  { name: '漏水报警器', prefix: 'LS' },
-  { name: '红外报警器', prefix: 'HW' }
-];
-
 Page({
   data: {
     showManualBind: false,
@@ -210,7 +203,7 @@ Page({
       if (bindRes.code === 1 && bindRes.data && typeof bindRes.data === 'string' && !/[\u4e00-\u9fa5]/.test(bindRes.data)) {
         const app = getApp();
         console.log('[bindDevice] 获取到设备token:', bindRes.data.substring(0, 30) + '...');
-        
+
         app.globalData.deviceTokens = app.globalData.deviceTokens || [];
         const index = app.globalData.deviceTokens.findIndex(d => d.sn === sn);
         if (index >= 0) {
@@ -222,9 +215,9 @@ Page({
         app.globalData.currentSn = sn;
         app.globalData.hasDeviceBound = true;
         setStorage('currentSn', sn);
-        
+
         console.log('[bindDevice] 设备token已保存到deviceTokens');
-        
+
         await wx.modal({
           title: '绑定成功',
           content: `设备 "${sn}" 绑定成功`,
@@ -246,25 +239,4 @@ Page({
     }
   },
 
-  /**
-   * 生成临时设备信息（接口返回空时兜底）
-   */
-  generateTempDevice(sn) {
-    const template = deviceTemplates[Math.floor(Math.random() * deviceTemplates.length)];
-    const userInfo = getStorage('userInfo', {});
-    const userName = userInfo.nickName || userInfo.userName || '用户';
-    const userPhone = userInfo.phone || '';
-    
-    return {
-      id: String(Date.now()),
-      name: `${template.name} ${template.prefix}${Math.floor(Math.random() * 10)}${Math.floor(Math.random() * 10)}`,
-      sn,
-      latitude: 0,
-      longitude: 0,
-      address: '请设置安装位置',
-      status: 'normal',
-      statusText: '正常',
-      contacts: userPhone ? [{ id: 'c' + Date.now(), name: userName, phone: userPhone }] : []
-    };
-  }
 });

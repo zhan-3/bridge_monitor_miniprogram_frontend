@@ -7,7 +7,8 @@ Page({
     isLogin: false,
     userInfo: {},
     devices: [],
-    currentSn: ''   // 当前激活的设备SN
+    currentSn: '',   // 当前激活的设备SN
+    pageLoading: true
   },
 
   // 把状态映射表定义为页面私有常量（避免data读取延迟问题）
@@ -31,14 +32,14 @@ Page({
     const token = getStorage('token');
 
     if (!isLogin || !token) {
-      this.setData({ isLogin: false, userInfo: {} });
+      this.setData({ isLogin: false, userInfo: {}, pageLoading: false });
       return
     }
 
     const userInfo = getStorage('userInfo') || {};
 
     if (!userInfo.phone) {
-      this.setData({ isLogin: true, userInfo });
+      this.setData({ isLogin: true, userInfo, pageLoading: false });
       wx.showModal({
         title: '请绑定手机号',
         content: '绑定手机号后才能正常使用报警服务',
@@ -57,8 +58,12 @@ Page({
       userInfo,
       currentSn: app.globalData.currentSn
     });
-    this.loadUserInfo();
-    this.loadAllDevices();
+    Promise.all([
+      this.loadUserInfo(),
+      this.loadAllDevices()
+    ]).finally(() => {
+      this.setData({ pageLoading: false });
+    });
     this.startPolling();
   },
 
@@ -68,7 +73,7 @@ Page({
 
   startPolling() {
     if (this.pollTimer) clearInterval(this.pollTimer);
-    this.pollTimer = setInterval(() => this.loadAllDevices(), 7000);
+    this.pollTimer = setInterval(() => this.loadAllDevices(), 15000);
   },
 
   onHide() {
@@ -102,7 +107,7 @@ Page({
     this.setData({ userInfo });
   },
 
-  // 遍历所有已绑定设备的token，构建设备列表
+  // 遍历所有已绑定设备的token，构建设备列表（并行请求）
   async loadAllDevices() {
     if (this.isLoadingDevices) return;
     this.isLoadingDevices = true;
@@ -115,29 +120,33 @@ Page({
         return;
       }
 
-      const devices = [];
-      for (const dt of deviceTokens) {
-        try {
-          const bindRes = await http.get('/user/bind/status', { deviceSn: dt.sn }, {
+      // 并行请求所有设备状态
+      const results = await Promise.allSettled(
+        deviceTokens.map(dt =>
+          http.get('/user/bind/status', { deviceSn: dt.sn }, {
             Authorization: `Bearer ${dt.token}`
-          });
-          console.log('[home] /user/bind/status response for', dt.sn, ':', JSON.stringify(bindRes));
-          if (bindRes.code === 1 && bindRes.data) {
-            // bind/status 返回的是 SN 数组，不是自定义名称
-            // 优先使用本地 deviceTokens 中保存的自定义名称，没有才用 SN
-            const displayName = (dt.name && dt.name !== dt.sn) ? dt.name : dt.sn;
-            devices.push({
-              id: dt.sn,
-              sn: dt.sn,
-              name: displayName,
-              status: 'normal',
-              statusText: '正常'
-            });
-          }
-        } catch (err) {
-          console.error('获取设备状态失败：', dt.sn, err);
-        }
-      }
+          }).then(bindRes => {
+            if (bindRes.code === 1 && bindRes.data) {
+              const displayName = (dt.name && dt.name !== dt.sn) ? dt.name : dt.sn;
+              return {
+                id: dt.sn,
+                sn: dt.sn,
+                name: displayName,
+                status: bindRes.data.status || 'normal',
+                statusText: DEVICE_STATUS_MAP[bindRes.data.status] || '正常'
+              };
+            }
+            return null;
+          }).catch(err => {
+            console.error('获取设备状态失败：', dt.sn, err);
+            return null;
+          })
+        )
+      );
+
+      const devices = results
+        .map(r => r.status === 'fulfilled' ? r.value : null)
+        .filter(Boolean);
 
       // 仅在数据有变化时才 setData，避免无意义的渲染
       if (JSON.stringify(devices) !== JSON.stringify(this.data.devices)) {
@@ -146,6 +155,16 @@ Page({
     } finally {
       this.isLoadingDevices = false;
     }
+  },
+
+  // 下拉刷新
+  onPullDownRefresh() {
+    Promise.all([
+      this.loadUserInfo(),
+      this.loadAllDevices()
+    ]).finally(() => {
+      wx.stopPullDownRefresh();
+    });
   },
 
   goLogin() {

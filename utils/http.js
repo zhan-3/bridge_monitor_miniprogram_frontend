@@ -33,7 +33,6 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
     const authHeader = header.Authorization || (token ? `Bearer ${token}` : '');
 
     const fullUrl = env.baseURL + url;
-    console.log('http request:', method, fullUrl, 'data:', data, 'header:', header, 'authHeader:', authHeader, 'token from storage:', token, 'skipAuthCheck:', skipAuthCheck);
 
     wx.request({
       url: fullUrl,

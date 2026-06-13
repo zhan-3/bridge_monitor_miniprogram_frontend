@@ -104,7 +104,6 @@
           data-index="{{item.index}}"
           bindlongpress="showActionMenu"
           data-id="{{item.id}}"
-          data-item="{{item}}"
         >
           <view class="audio-icon">🎵</view>
           <view class="audio-content">

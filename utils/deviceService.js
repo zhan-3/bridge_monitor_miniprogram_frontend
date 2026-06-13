@@ -10,8 +10,6 @@ import { getStorage } from './storage';
  * @returns {Object} device 对象
  */
 export async function loadDeviceData(deviceId, authToken) {
-  console.log('[deviceService] loadDeviceData - deviceId:', deviceId);
-  console.log('[deviceService] loadDeviceData - authToken:', authToken ? authToken.substring(0, 30) + '...' : 'empty');
   
   const device = {
     id: deviceId,
@@ -30,7 +28,7 @@ export async function loadDeviceData(deviceId, authToken) {
     const bindRes = await http.get('/user/bind/status', { deviceSn: deviceId }, {
       Authorization: `Bearer ${authToken}`
     });
-    console.log('[deviceService] /user/bind/status response:', JSON.stringify(bindRes));
+
     if (bindRes.code === 1 && bindRes.data) {
       if (bindRes.data.status) {
         device.status = bindRes.data.status;
@@ -56,7 +54,7 @@ export async function loadDeviceData(deviceId, authToken) {
     const locRes = await http.get('/user/getLocation', { deviceSn: deviceId }, {
       Authorization: `Bearer ${authToken}`
     });
-    console.log('[deviceService] /user/getLocation response:', JSON.stringify(locRes));
+
     if (locRes.code === 1 && locRes.data) {
       device.latitude = parseFloat(locRes.data.gpsLat) || 39.9042;
       device.longitude = parseFloat(locRes.data.gpsLng) || 116.4074;

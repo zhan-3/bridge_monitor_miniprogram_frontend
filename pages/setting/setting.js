@@ -76,20 +76,27 @@ Page({
   },
 
   loadLocalSetting() {
-    const autoRecord = wx.getStorageSync('autoRecord') !== false ? true : wx.getStorageSync('autoRecord');
-    const qualityIndex = wx.getStorageSync('recordQualityIndex') || 1;
-    const dayIndex = wx.getStorageSync('recordSaveDayIndex') || 1;
-    const alarmPush = wx.getStorageSync('alarmPush') !== false ? true : wx.getStorageSync('alarmPush');
-    const alarmSound = wx.getStorageSync('alarmSound') !== false ? true : wx.getStorageSync('alarmSound');
-    const disconnectWarn = wx.getStorageSync('disconnectWarn') !== false ? true : wx.getStorageSync('disconnectWarn');
+    let settings = getStorage('localSettings');
+    if (!settings || typeof settings !== 'object') {
+      // 向后兼容：从旧版独立 key 迁移
+      settings = {
+        autoRecord: wx.getStorageSync('autoRecord'),
+        qualityIndex: wx.getStorageSync('recordQualityIndex') || 1,
+        dayIndex: wx.getStorageSync('recordSaveDayIndex') || 1,
+        alarmPush: wx.getStorageSync('alarmPush'),
+        alarmSound: wx.getStorageSync('alarmSound'),
+        disconnectWarn: wx.getStorageSync('disconnectWarn')
+      };
+      setStorage('localSettings', settings);
+    }
 
     this.setData({
-      autoRecord,
-      qualityIndex,
-      dayIndex,
-      alarmPush,
-      alarmSound,
-      disconnectWarn
+      autoRecord: settings.autoRecord !== false,
+      qualityIndex: settings.qualityIndex || 1,
+      dayIndex: settings.dayIndex || 1,
+      alarmPush: settings.alarmPush !== false,
+      alarmSound: settings.alarmSound !== false,
+      disconnectWarn: settings.disconnectWarn !== false
     });
   },
 
@@ -311,13 +318,7 @@ Page({
     }
 
     const { autoRecord, qualityIndex, dayIndex, alarmPush, alarmSound, disconnectWarn } = this.data;
-    
-    wx.setStorageSync('autoRecord', autoRecord);
-    wx.setStorageSync('recordQualityIndex', qualityIndex);
-    wx.setStorageSync('recordSaveDayIndex', dayIndex);
-    wx.setStorageSync('alarmPush', alarmPush);
-    wx.setStorageSync('alarmSound', alarmSound);
-    wx.setStorageSync('disconnectWarn', disconnectWarn);
+    setStorage('localSettings', { autoRecord, qualityIndex, dayIndex, alarmPush, alarmSound, disconnectWarn });
 
     wx.toast({ title: '保存成功', icon: 'success' });
     

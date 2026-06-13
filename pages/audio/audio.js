@@ -32,7 +32,6 @@ Page({
   loadTimeoutTimer: null,
 
   onLoad(options) {
-    console.log('录音页面加载');
     this.initAudioManager();
     this.initWaveform();
     setTimeout(() => {
@@ -122,7 +121,7 @@ Page({
     };
 
     this.setData({ audioManager });
-    console.log('✅ 音频管理器初始化成功（InnerAudioContext）');
+
   },
 
   // ========== 完全保留你原有的数据处理/接口逻辑 ==========
@@ -185,7 +184,10 @@ getAllDeviceRecord() {
           isPlaying: item.id === currentPlayId && isPlaying
         }));
 
-        this.setData({ audioList: resList });
+        // 脏检查：数据没变化就不 setData
+        if (JSON.stringify(resList) !== JSON.stringify(this.data.audioList)) {
+          this.setData({ audioList: resList });
+        }
         this.updateFilteredList();
       })
       .catch(err => {
@@ -249,8 +251,9 @@ getAllDeviceRecord() {
   },
 
   showActionMenu(e) {
-    const { id, item } = e.currentTarget.dataset;
+    const { id } = e.currentTarget.dataset;
     const index = this.data.audioList.findIndex(a => a.id === id);
+    const item = this.data.audioList[index] || null;
     this.setData({
       showActionSheet: true,
       selectedItem: item,
@@ -422,8 +425,7 @@ getAllDeviceRecord() {
         }
 
         try {
-          this.data.audioManager.play(); // 替换原生play
-          console.log('✅ 音频播放触发成功');
+          this.data.audioManager.play();
           this.setData({
             currentPlayId: id,
             isPlaying: true,
@@ -458,7 +460,6 @@ getAllDeviceRecord() {
         playState: 'pause'
       });
       this.clearProgressTimer();
-      console.log('✅ 音频暂停成功');
     }
   },
 

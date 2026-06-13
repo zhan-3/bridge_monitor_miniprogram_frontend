@@ -1,4 +1,11 @@
 <view class="container">
+  <!-- 加载态 -->
+  <view wx:if="{{isLoading}}" class="loading-screen">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载设备信息...</text>
+  </view>
+
+  <block wx:else>
   <view class="map-section">
     <map
       id="deviceMap"
@@ -73,6 +80,7 @@
   <view class="unbind-section">
     <view class="unbind-btn" bindtap="confirmUnbind">解除绑定</view>
   </view>
+  </block>
 </view>
 
 <!-- 修改设备名称弹窗 -->

@@ -10,7 +10,5 @@
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "dependencies": {
-    "wx-audio-manager": "^1.3.4"
-  }
+  "dependencies": {}
 }
