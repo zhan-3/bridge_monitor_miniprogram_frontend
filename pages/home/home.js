@@ -18,15 +18,6 @@ Page({
     offline: '设备离线'
   },
 
-  onLoad() {
-    // 用户信息只需加载一次，放在 onLoad 避免每次切换页面重复请求
-    const isLogin = getStorage('isLogin');
-    const token = getStorage('token');
-    if (isLogin && token) {
-      this.loadUserInfo();
-    }
-  },
-
   onShow() {
     const isLogin = getStorage('isLogin');
     const token = getStorage('token');

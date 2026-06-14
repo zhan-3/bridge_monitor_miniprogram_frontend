@@ -2,7 +2,6 @@
   "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark",
   "usingComponents": {
-    "white-card": "/components/white-card/white-card" ,
-    "common-card": "/components/common-card/common-card"
+    "white-card": "/components/white-card/white-card"
   }
 }
