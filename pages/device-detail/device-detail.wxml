@@ -84,39 +84,61 @@
 </view>
 
 <!-- 修改设备名称弹窗 -->
-<form-modal visible="{{showEditNameModal}}" title="修改设备名称" confirmText="保存" bind:close="closeEditNameModal" bind:cancel="closeEditNameModal" bind:confirm="saveName">
-  <input 
-    class="modal-input" 
-    type="text" 
-    placeholder="请输入设备名称" 
-    bindinput="onNameInput"
-    value="{{tempName}}"
-    maxlength="20"
-  />
-</form-modal>
-
-<!-- 添加紧急联系人弹窗 -->
-<form-modal visible="{{showAddContactModal}}" title="添加紧急联系人" confirmText="确认添加" bind:close="closeAddContactModal" bind:cancel="closeAddContactModal" bind:confirm="saveContact">
-  <view class="form-item">
-    <label class="form-label">姓名</label>
+<view class="modal-mask" wx:if="{{showEditNameModal}}" bindtap="closeEditNameModal"></view>
+<view class="modal-container" wx:if="{{showEditNameModal}}" catchtap>
+  <view class="modal-header">
+    <view class="modal-title">修改设备名称</view>
+    <view class="modal-close" bindtap="closeEditNameModal">✕</view>
+  </view>
+  <view class="modal-body">
     <input 
       class="modal-input" 
       type="text" 
-      placeholder="请输入联系人姓名" 
-      bindinput="onContactNameInput"
-      value="{{tempContactName}}"
+      placeholder="请输入设备名称" 
+      bindinput="onNameInput"
+      value="{{tempName}}"
       maxlength="20"
     />
   </view>
-  <view class="form-item">
-    <label class="form-label">手机号</label>
-    <input 
-      class="modal-input" 
-      type="number" 
-      placeholder="请输入11位手机号" 
-      bindinput="onContactPhoneInput"
-      value="{{tempContactPhone}}"
-      maxlength="11"
-    />
+  <view class="modal-footer">
+    <view class="modal-btn cancel" bindtap="closeEditNameModal" hover-class="btn-press">取消</view>
+    <view class="modal-btn confirm" bindtap="saveName" hover-class="btn-press">保存</view>
   </view>
-</form-modal>
+</view>
+
+<!-- 添加紧急联系人弹窗 -->
+<view class="modal-mask" wx:if="{{showAddContactModal}}" bindtap="closeAddContactModal"></view>
+<view class="modal-container" wx:if="{{showAddContactModal}}" catchtap>
+  <view class="modal-header">
+    <view class="modal-title">添加紧急联系人</view>
+    <view class="modal-close" bindtap="closeAddContactModal">✕</view>
+  </view>
+  <view class="modal-body">
+    <view class="form-item">
+      <label class="form-label">姓名</label>
+      <input 
+        class="modal-input" 
+        type="text" 
+        placeholder="请输入联系人姓名" 
+        bindinput="onContactNameInput"
+        value="{{tempContactName}}"
+        maxlength="20"
+      />
+    </view>
+    <view class="form-item">
+      <label class="form-label">手机号</label>
+      <input 
+        class="modal-input" 
+        type="number" 
+        placeholder="请输入11位手机号" 
+        bindinput="onContactPhoneInput"
+        value="{{tempContactPhone}}"
+        maxlength="11"
+      />
+    </view>
+  </view>
+  <view class="modal-footer">
+    <view class="modal-btn cancel" bindtap="closeAddContactModal" hover-class="btn-press">取消</view>
+    <view class="modal-btn confirm" bindtap="saveContact" hover-class="btn-press">确认添加</view>
+  </view>
+</view>
