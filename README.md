@@ -70,8 +70,7 @@ miniprogram-11-终版/
 │   ├── deviceService.js        # 设备数据服务：loadDeviceData / loadDeviceContacts / buildMarkers
 │   ├── constants.js            # 常量：DEVICE_STATUS_MAP（状态映射）、DEVICE_TYPE_MAP（SN前缀）
 │   ├── validators.js           # 验证函数：isValidPhone / isValidSN
-│   ├── extendApi.js            # WeChat API扩展：wx.toast / wx.modal Promise封装
-│   └── util.js                 # WeChat默认工具（未使用）
+│   └── extendApi.js            # WeChat API扩展：wx.toast / wx.modal Promise封装
 │
 ├── images/                     # 静态资源
 │   ├── home.png / home-active.png        # 首页图标
