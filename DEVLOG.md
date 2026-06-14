@@ -1,5 +1,26 @@
 # 开发日志
 
+## 2026-06-14 — 代码质量修复：清理 token 日志 / CSS 去重 / 防重复提交 / 提取公用函数
+
+### 改动
+
+| 文件 | 改动 |
+|------|------|
+| `pages/devicebinding/devicebinding.js` | 删除 5 处打印 token 的 console.log（敏感信息泄露）；绑定成功弹窗改为 toast + 自动跳转 |
+| `utils/deviceService.js` | 新增 `saveDeviceName(sn, newName)` 共用函数，统一 deviceTokens 更新逻辑 |
+| `pages/device-detail/device-detail.js` | `saveName()` 改用 `saveDeviceName()` 消除重复；`saveContact`/`deleteContact` 加 `mask: true` 防重复提交 |
+| `pages/setting/setting.js` | `saveName()` 改用 `saveDeviceName()` 消除重复；`saveSetting()` 加 `isSaving` 标志防重复提交；`wx.setStorageSync` → `setStorage` |
+| `pages/home/home.js` | `data` 补全 `hasPhone: false` 初始化字段 |
+
+### 效果
+
+- **5 文件 +28/-40，净 -12 行**
+- 绑定流程少一次确认点击（modal → toast）
+- 3 处重复提交风险消除（setting 保存 / detail 添加联系人 / detail 删除联系人）
+- `saveName()` 重复逻辑从两页提取到 deviceService，仅 6 行
+
+---
+
 ## 2026-06-14 — CSS 去重：loading spinner / 状态配色变量 / 弹窗基础样式
 
 ### 改动

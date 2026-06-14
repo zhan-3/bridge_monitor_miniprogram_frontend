@@ -1,6 +1,6 @@
 import http from '../../utils/http';
 import { getStorage, setStorage } from '../../utils/storage';
-import { loadDeviceData, loadDeviceContacts, buildMarkers } from '../../utils/deviceService';
+import { loadDeviceData, loadDeviceContacts, buildMarkers, saveDeviceName } from '../../utils/deviceService';
 import { DEVICE_STATUS_MAP } from '../../utils/constants';
 
 Page({
@@ -84,15 +84,7 @@ Page({
       showEditNameModal: false,
       tempName: ''
     });
-    // 同步到 globalData.deviceTokens 和本地存储
-    const app = getApp();
-    const deviceTokens = app.globalData.deviceTokens || [];
-    const idx = deviceTokens.findIndex(d => d.sn === currentSn);
-    if (idx >= 0) {
-      deviceTokens[idx].name = newName;
-      app.globalData.deviceTokens = deviceTokens;
-      wx.setStorageSync('deviceTokens', deviceTokens);
-    }
+    saveDeviceName(currentSn, newName);
     wx.toast({ title: '保存成功', icon: 'success' });
   },
 
@@ -133,7 +125,7 @@ Page({
     }
 
     try {
-      wx.showLoading({ title: '添加中...' });
+      wx.showLoading({ title: '添加中...', mask: true });
       const authToken = this.data.currentDeviceToken;
       
       const res = await http.post(
@@ -177,7 +169,7 @@ Page({
     if (!confirmed) return;
 
     try {
-      wx.showLoading({ title: '删除中...' });
+      wx.showLoading({ title: '删除中...', mask: true });
       const authToken = this.data.currentDeviceToken;
 
       const delRes = await http.delete(`/user/deletePhone?number=${encodeURIComponent(contact.phone)}`, {}, {

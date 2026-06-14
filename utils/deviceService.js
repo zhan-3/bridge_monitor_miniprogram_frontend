@@ -1,7 +1,7 @@
 // 设备数据加载公共服务，供 device-detail 和 setting 页共用
 import http from './http';
 import { DEVICE_STATUS_MAP } from './constants';
-import { getStorage } from './storage';
+import { getStorage, setStorage } from './storage';
 
 /**
  * 加载设备基本信息（名称、状态、GPS位置）
@@ -128,4 +128,15 @@ export function buildMarkers(device) {
     },
     animation: true
   }];
+}
+
+export function saveDeviceName(sn, newName) {
+  const app = getApp();
+  const deviceTokens = app.globalData.deviceTokens || [];
+  const idx = deviceTokens.findIndex(d => d.sn === sn);
+  if (idx >= 0) {
+    deviceTokens[idx].name = newName;
+    app.globalData.deviceTokens = deviceTokens;
+    setStorage('deviceTokens', deviceTokens);
+  }
 }

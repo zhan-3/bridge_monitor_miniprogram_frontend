@@ -1,4 +1,4 @@
-import { loadDeviceData, buildMarkers } from '../../utils/deviceService';
+import { loadDeviceData, buildMarkers, saveDeviceName } from '../../utils/deviceService';
 import http from '../../utils/http';
 import { getStorage, setStorage } from '../../utils/storage';
 import { isValidPhone } from '../../utils/validators';
@@ -18,6 +18,7 @@ Page({
     alarmSound: true,
     disconnectWarn: true,
     isDeviceSetting: false,
+    isSaving: false,
     device: null,
     markers: [],
     showEditNameModal: false,
@@ -213,15 +214,7 @@ Page({
       showEditNameModal: false,
       tempName: ''
     });
-    // 同步到 globalData.deviceTokens 和本地存储
-    const app = getApp();
-    const deviceTokens = app.globalData.deviceTokens || [];
-    const idx = deviceTokens.findIndex(d => d.sn === device.sn);
-    if (idx >= 0) {
-      deviceTokens[idx].name = newName;
-      app.globalData.deviceTokens = deviceTokens;
-      wx.setStorageSync('deviceTokens', deviceTokens);
-    }
+    saveDeviceName(device.sn, newName);
     wx.toast({ title: '名称已修改', icon: 'success' });
   },
 
@@ -303,6 +296,8 @@ Page({
   },
 
   saveSetting() {
+    if (this.data.isSaving) return;
+    this.setData({ isSaving: true });
     const { device, isDeviceSetting } = this.data;
 
     if (isDeviceSetting && device) {
@@ -313,7 +308,7 @@ Page({
       if (idx >= 0) {
         deviceTokens[idx].name = device.name;
         app.globalData.deviceTokens = deviceTokens;
-        wx.setStorageSync('deviceTokens', deviceTokens);
+        setStorage('deviceTokens', deviceTokens);
       }
     }
 
@@ -321,7 +316,7 @@ Page({
     setStorage('localSettings', { autoRecord, qualityIndex, dayIndex, alarmPush, alarmSound, disconnectWarn });
 
     wx.toast({ title: '保存成功', icon: 'success' });
-    
+
     setTimeout(() => {
       wx.navigateBack();
     }, 1500);

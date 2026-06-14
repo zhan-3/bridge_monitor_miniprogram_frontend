@@ -8,6 +8,7 @@ Page({
     userInfo: {},
     devices: [],
     currentSn: '',   // 当前激活的设备SN
+    hasPhone: false,
     pageLoading: true
   },
 

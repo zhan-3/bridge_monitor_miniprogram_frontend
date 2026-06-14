@@ -176,8 +176,6 @@ Page({
       wx.showLoading({ title: '绑定设备中...', mask: true });
 
       const currentToken = getStorage('loginToken') || getStorage('token');
-      console.log('[bindDevice] 当前初始token:', currentToken);
-      console.log('[bindDevice] 请求绑定设备, SN:', sn);
 
       // deviceSn 通过 URL 查询参数传递
       let bindRes = await http.post(`/user/bind/device?deviceSn=${encodeURIComponent(sn)}&deviceId=${encodeURIComponent(sn)}`, {
@@ -187,22 +185,17 @@ Page({
         Authorization: `Bearer ${currentToken}`
       }, true);
 
-      console.log('[bindDevice] /user/bind/device 响应:', JSON.stringify(bindRes));
-
       if (bindRes.code === 1 && bindRes.data === '绑定成功') {
-        console.log('[bindDevice] 设备已绑定，尝试获取设备token...');
         bindRes = await http.post(`/user/bind/userDeviceLogin?deviceSn=${encodeURIComponent(sn)}&deviceId=${encodeURIComponent(sn)}`, {
           deviceSn: sn,
           deviceId: sn
         }, {
           Authorization: `Bearer ${currentToken}`
         }, true);
-        console.log('[bindDevice] /user/bind/userDeviceLogin 响应:', JSON.stringify(bindRes));
       }
 
       if (bindRes.code === 1 && bindRes.data && typeof bindRes.data === 'string' && !/[\u4e00-\u9fa5]/.test(bindRes.data)) {
         const app = getApp();
-        console.log('[bindDevice] 获取到设备token:', bindRes.data.substring(0, 30) + '...');
 
         app.globalData.deviceTokens = app.globalData.deviceTokens || [];
         const index = app.globalData.deviceTokens.findIndex(d => d.sn === sn);
@@ -216,14 +209,10 @@ Page({
         app.globalData.hasDeviceBound = true;
         setStorage('currentSn', sn);
 
-        console.log('[bindDevice] 设备token已保存到deviceTokens');
-
-        await wx.modal({
-          title: '绑定成功',
-          content: `设备 "${sn}" 绑定成功`,
-          showCancel: false
-        });
-        wx.reLaunch({ url: '/pages/home/home' });
+        wx.toast({ title: '绑定成功', icon: 'success' });
+        setTimeout(() => {
+          wx.reLaunch({ url: '/pages/home/home' });
+        }, 1000);
       } else {
         console.error('[bindDevice] 绑定失败:', bindRes);
         wx.toast({ title: bindRes.msg || '绑定失败', icon: 'none' });
