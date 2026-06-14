@@ -49,11 +49,6 @@ miniprogram-11-终版/
 │   │   ├── audio.wxss          #   播放器界面样式
 │   │   └── audio.json          #   无组件依赖
 │   │
-│   └── logs/                   # 调试日志页（WeChat默认模板，未使用）
-│       ├── logs.js
-│       ├── logs.wxml
-│       ├── logs.wxss
-│       └── logs.json
 │
 ├── components/                 # 自定义组件层
 │   ├── white-card/             # 白色卡片容器 — 被 pages/home / device-detail / setting 共用
@@ -121,7 +116,7 @@ miniprogram-11-终版/
 | home | white-card | 设备列表卡片容器 |
 | device-detail | white-card | 联系人卡片容器 |
 | setting | white-card, custom-button | 设置模块卡片 + 操作按钮 |
-| login/audio/devicebinding/logs | 无 | 纯原生组件 |
+| login/audio/devicebinding | 无 | 纯原生组件 |
 
 ## 已完成的优化（2026-06-13）
 
