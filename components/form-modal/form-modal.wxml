@@ -1,0 +1,19 @@
+<view class="fm-mask" wx:if="{{visible}}" bindtap="onMaskTap"></view>
+<view class="fm-container" wx:if="{{visible}}" catchtap>
+  <view class="fm-header" wx:if="{{title}}">
+    <slot name="header">
+      <view class="fm-title">{{title}}</view>
+      <view class="fm-close" wx:if="{{showClose}}" bindtap="onCancel">✕</view>
+    </slot>
+  </view>
+  <view class="fm-body"><slot></slot></view>
+  <view class="fm-footer" wx:if="{{!hideFooter}}">
+    <slot name="footer">
+      <view class="fm-btn cancel" bindtap="onCancel">{{cancelText}}</view>
+      <view class="fm-btn confirm {{confirmDisabled ? 'disabled' : ''}}" bindtap="onConfirm">
+        <view wx:if="{{loading}}" class="fm-spinner"></view>
+        <text wx:else>{{confirmText}}</text>
+      </view>
+    </slot>
+  </view>
+</view>

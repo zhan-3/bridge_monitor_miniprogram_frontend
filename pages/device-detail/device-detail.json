@@ -1,5 +1,6 @@
 {
   "usingComponents": {
-    "white-card": "/components/white-card/white-card"
+    "white-card": "/components/white-card/white-card",
+    "form-modal": "/components/form-modal/form-modal"
   }
 }

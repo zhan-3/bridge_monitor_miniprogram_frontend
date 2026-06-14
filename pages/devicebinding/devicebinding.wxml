@@ -31,30 +31,16 @@
     <view class="tips-item">3. 绑定成功后即可使用设备功能</view>
   </view>
 
-  <!-- 手动绑定弹窗（核心修改） -->
-  <view class="modal-mask" wx:if="{{showManualBind}}" bindtap="closeManualBind"></view>
-  <view class="modal-container" wx:if="{{showManualBind}}" catchtap>
-    <!-- 弹窗标题 -->
-    <view class="modal-header">
-      <view class="modal-title">输入设备SN码</view>
-      <view class="modal-close" bindtap="closeManualBind">✕</view>
-    </view>
-    <!-- 输入框 -->
-    <view class="modal-body">
-      <input
-        class="modal-input {{snError ? 'input-error' : ''}}"
-        type="text"
-        placeholder="请输入设备SN码（大写字母+数字，20位以内）"
-        bindinput="onInputSN"
-        value="{{inputSN}}"
-        maxlength="20"
-      />
-      <text wx:if="{{snError}}" class="input-error-tip">SN码只能包含大写字母和数字</text>
-    </view>
-    <!-- 按钮组 -->
-    <view class="modal-footer">
-      <button class="modal-btn cancel" bindtap="closeManualBind">取消</button>
-      <button class="modal-btn confirm {{snError ? 'btn-disabled' : ''}}" bindtap="confirmBind" loading="{{isLoading}}" disabled="{{snError}}">确认绑定</button>
-    </view>
-  </view>
+  <!-- 手动绑定弹窗 -->
+  <form-modal visible="{{showManualBind}}" title="输入设备SN码" confirmText="确认绑定" confirmDisabled="{{snError}}" loading="{{isLoading}}" bind:close="closeManualBind" bind:cancel="closeManualBind" bind:confirm="confirmBind">
+    <input
+      class="modal-input {{snError ? 'input-error' : ''}}"
+      type="text"
+      placeholder="请输入设备SN码（大写字母+数字，20位以内）"
+      bindinput="onInputSN"
+      value="{{inputSN}}"
+      maxlength="20"
+    />
+    <text wx:if="{{snError}}" class="input-error-tip">SN码只能包含大写字母和数字</text>
+  </form-modal>
 </view>

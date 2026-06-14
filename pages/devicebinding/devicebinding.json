@@ -1,3 +1,5 @@
 {
-  "usingComponents": {}
+  "usingComponents": {
+    "form-modal": "/components/form-modal/form-modal"
+  }
 }
