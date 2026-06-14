@@ -47,6 +47,16 @@
 - 音频脏检查：`JSON.stringify` 比较只在 `getAllDeviceRecord` 成功返回后执行，网络失败时不污染 `audioList`
 - 设置合并存储：新用户直接读写 `localSettings`，老用户首次访问走迁移路径后回写
 
+#### 后续追加（2026-06-13 下午）
+
+| 文件 | 改动 |
+|------|------|
+| `pages/home/home.js` | 删 `onLoad` 中冗余的 `loadUserInfo()` 调用（`onShow` 已覆盖） |
+| `pages/home/home.json` | 移除未使用的 `common-card` 声明 |
+| `app.json` | 添加 `lazyCodeLoading: requiredComponents`（组件按需注入，提升启动速度） |
+| `pages/audio/audio.json` | 移除未使用的 `white-card` 声明 |
+| `components/common-card/` | 删除整文件夹（全局无引用，死代码） |
+
 ## 2026-05-21 - 登录流程重做：3步→2步 + 首页手机号拦截
 
 ### 背景
