@@ -71,7 +71,6 @@ miniprogram-11-终版/
 │   ├── constants.js            # 常量：DEVICE_STATUS_MAP（状态映射）、DEVICE_TYPE_MAP（SN前缀）
 │   ├── validators.js           # 验证函数：isValidPhone / isValidSN
 │   ├── extendApi.js            # WeChat API扩展：wx.toast / wx.modal Promise封装
-│   ├── mockServer.js           # Mock服务（未启用）：本地模拟后端数据，场景切换
 │   └── util.js                 # WeChat默认工具（未使用）
 │
 ├── images/                     # 静态资源
