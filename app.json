@@ -2,7 +2,6 @@
 "pages": [
     "pages/home/home",
     "pages/device-detail/device-detail",
-    "pages/logs/logs",
     "pages/login/login",
     "pages/setting/setting",
     "pages/audio/audio",
