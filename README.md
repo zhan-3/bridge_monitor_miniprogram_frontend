@@ -1,3 +1,134 @@
+# 报警设备管理系统 — 微信小程序
+
+## 项目结构
+
+```
+miniprogram-11-终版/
+├── app.js                      # 全局入口：globalData（token/设备列表）、setToken/switchDevice
+├── app.json                    # 页面注册、窗口配置、权限声明、lazyCodeLoading按需注入
+├── app.wxss                    # 全局样式：CSS变量（橙色主色调）、button重置
+├── DEVLOG.md                   # 开发日志（问题背景/方案演进/改动记录）
+├── README.md                   # 项目说明 + 后端接口文档
+├── package.json                # npm依赖管理（目前无运行时依赖）
+│
+├── pages/                      # 页面层（每个页面4文件：js/wxml/wxss/json）
+│   ├── home/                   # 首页 — 设备列表总览
+│   │   ├── home.js             #   并行轮询设备状态（Promise.allSettled/15s间隔）
+│   │   │                      #   下拉刷新、加载状态、登录态检查、用户信息缓存
+│   │   ├── home.wxml           #   设备卡片列表、未登录/未绑定引导、加载spinner
+│   │   ├── home.wxss           #   设备卡片、spinner动画、空状态样式
+│   │   └── home.json           #   white-card组件、下拉刷新启用
+│   │
+│   ├── login/                  # 登录页 — 微信登录 + 手机号绑定
+│   │   ├── login.js            #   doLogin（wx.login→/system/log）→ confirmPhone
+│   │   ├── login.wxml          #   两步：微信登录按钮 → 手机号输入表单
+│   │   ├── login.wxss          #   居中布局、表单样式
+│   │   └── login.json          #   无组件依赖
+│   │
+│   ├── devicebinding/          # 设备绑定页 — 扫码/手动输入SN绑定
+│   │   ├── devicebinding.js    #   scanBind/confirmBind/autoBind → POST /user/bind/device
+│   │   ├── devicebinding.wxml  #   扫码按钮、手动输入弹窗
+│   │   ├── devicebinding.wxss  #   绑定页样式
+│   │   └── devicebinding.json  #   无组件依赖
+│   │
+│   ├── device-detail/          # 设备详情页 — 位置/联系人/事件
+│   │   ├── device-detail.js    #   loadDeviceFromAPI + loadDeviceContacts + 加载状态
+│   │   ├── device-detail.wxml  #   white-card包裹联系人列表、GPS地图、加载spinner
+│   │   ├── device-detail.wxss  #   联系人卡片、spinner样式
+│   │   └── device-detail.json  #   white-card组件
+│   │
+│   ├── setting/                # 设置页 — 个人资料/设备设置/录音配置
+│   │   ├── setting.js          #   头像昵称编辑、手机号绑定、设备位置选择、设置项存储
+│   │   ├── setting.wxml        #   多个white-card模块：个人资料/位置/设备信息/录音/报警
+│   │   ├── setting.wxss        #   设置模块卡片样式
+│   │   └── setting.json        #   white-card + custom-button组件
+│   │
+│   ├── audio/                  # 录音列表页 — 报警录音播放管理
+│   │   ├── audio.js            #   轮询录音列表（脏检查）、音频播放控制（InnerAudioContext）
+│   │   ├── audio.wxml          #   录音项列表、播放进度、长按删除/收藏
+│   │   ├── audio.wxss          #   播放器界面样式
+│   │   └── audio.json          #   无组件依赖
+│   │
+│   └── logs/                   # 调试日志页（WeChat默认模板，未使用）
+│       ├── logs.js
+│       ├── logs.wxml
+│       ├── logs.wxss
+│       └── logs.json
+│
+├── components/                 # 自定义组件层
+│   ├── white-card/             # 白色卡片容器 — 被 pages/home / device-detail / setting 共用
+│   │   ├── white-card.js
+│   │   ├── white-card.wxml     #   title/rightContent/footer 插槽
+│   │   ├── white-card.wxss     #   圆角阴影卡片
+│   │   └── white-card.json
+│   │
+│   └── custom-button/          # 自定义按钮 — 仅 setting 页使用（3处）
+│       ├── custom-button.js    #   type/size/disabled 属性
+│       ├── custom-button.wxml
+│       ├── custom-button.wxss  #   橙色主色调按钮样式
+│       └── custom-button.json
+│
+├── utils/                      # 工具层
+│   ├── http.js                 # HTTP请求封装：wx.request统一拦截、401/403处理、token注入
+│   ├── storage.js              # 存储封装：wx.get/set/remove/clearStorageSync + try/catch
+│   ├── env.js                  # 环境配置：baseURL（develop/trial/release三环境智能切换）
+│   ├── deviceService.js        # 设备数据服务：loadDeviceData / loadDeviceContacts / buildMarkers
+│   ├── constants.js            # 常量：DEVICE_STATUS_MAP（状态映射）、DEVICE_TYPE_MAP（SN前缀）
+│   ├── validators.js           # 验证函数：isValidPhone / isValidSN
+│   ├── extendApi.js            # WeChat API扩展：wx.toast / wx.modal Promise封装
+│   ├── mockServer.js           # Mock服务（未启用）：本地模拟后端数据，场景切换
+│   └── util.js                 # WeChat默认工具（未使用）
+│
+├── images/                     # 静态资源
+│   ├── home.png / home-active.png        # 首页图标
+│   ├── map.png / map-active.png          # 地图图标
+│   ├── marker.png                        # 地图标记
+│   ├── avatar.png                        # 默认头像
+│   ├── setting.png / navigator.png       # 设置/导航图标
+│   ├── voice.png / noaudio.png           # 音频状态图标
+│   ├── play.png / pause.png / next.png / last.png  # 播放控制
+│   ├── audio-file.png / audio-date.png / audio-reporter.png / audio-location.png / audio-speaker.png / audio-delete.png  # 录音列表图标
+│
+├── server/                     # Mock后端服务（Express）
+│   ├── app.js                  # 完整Mock后端：登录/绑定/联系人/位置/录音/调试接口
+│   ├── package.json
+│   ├── audio/                  # 测试音频文件（.mp3）
+│   └── miniprogram_npm/        # 服务端依赖
+│
+└── project.config.json         # 微信开发者工具配置（含AppID）
+```
+
+## 关键流程
+
+```
+登录: 打开首页 → onShow检查token/手机号 → 无token → login页
+      → doLogin (wx.login → POST /system/log → 存token)
+      → confirmPhone (POST /user/userBindPhone) → reLaunch首页
+
+绑定: 扫码 → devicebinding页 → checkLoginStatus
+      → 未登录 → login页 → 登录完成 → redirect回devicebinding
+      → autoBindDevice → POST /user/bind/device → 首页
+
+轮询: 首页onShow → loadAllDevices（Promise.allSettled并行）
+      → startPolling（setInterval 15s）
+      → onHide/onUnload → clearInterval
+```
+
+## 组件注册关系
+
+| 页面 | 注册组件 | 用途 |
+|------|---------|------|
+| home | white-card | 设备列表卡片容器 |
+| device-detail | white-card | 联系人卡片容器 |
+| setting | white-card, custom-button | 设置模块卡片 + 操作按钮 |
+| login/audio/devicebinding/logs | 无 | 纯原生组件 |
+
+## 已完成的优化（2026-06-13）
+
+详见 [DEVLOG.md](./DEVLOG.md) 中 `2026-06-13` 条目。
+
+---
+
 # 报警设备后端接口文档
 
 ## 目录
