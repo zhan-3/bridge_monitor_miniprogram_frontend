@@ -73,14 +73,14 @@ miniprogram-11-终版/
 │   └── extendApi.js            # WeChat API扩展：wx.toast / wx.modal Promise封装
 │
 ├── images/                     # 静态资源
-│   ├── home.png / home-active.png        # 首页图标
-│   ├── map.png / map-active.png          # 地图图标
+│   ├── home.png                          # 首页图标（已删除未使用的 active 态）
+│   ├── map.png                           # 地图图标（已删除未使用的 active 态）
 │   ├── marker.png                        # 地图标记
 │   ├── avatar.png                        # 默认头像
 │   ├── setting.png / navigator.png       # 设置/导航图标
-│   ├── voice.png / noaudio.png           # 音频状态图标
+│   ├── voice.png                         # 音频状态图标（已删除未使用的 noaudio）
 │   ├── play.png / pause.png / next.png / last.png  # 播放控制
-│   ├── audio-file.png / audio-date.png / audio-reporter.png / audio-location.png / audio-speaker.png / audio-delete.png  # 录音列表图标
+│   │                                      #（已删除未使用的 audio-* 系列图标，audio 页使用 emoji）
 │
 ├── server/                     # Mock后端服务（Express）
 │   ├── app.js                  # 完整Mock后端：登录/绑定/联系人/位置/录音/调试接口

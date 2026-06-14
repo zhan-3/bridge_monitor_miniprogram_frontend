@@ -57,6 +57,22 @@
 | `pages/audio/audio.json` | 移除未使用的 `white-card` 声明 |
 | `components/common-card/` | 删除整文件夹（全局无引用，死代码） |
 
+### 2026-06-13 晚间 — 清理项目垃圾
+
+删除零引用文件和空壳页面：
+
+| 文件 | 原因 |
+|------|------|
+| `pages/logs/` | WeChat 默认模板，全空（js/wxml 零行代码），无人使用 |
+| `temp.txt` | git 合并残留，内容 `1111111` |
+| `.playwright/` | Playwright 浏览器缓存，与项目运行无关 |
+| `sitemap.json` | 内部管理工具无需微信搜索收录，删文件 + `app.json` 移除引用 |
+| `utils/mockServer.js` | 默认关闭、全局零引用，Mock 功能已由 `server/app.js` 替代 |
+| `utils/util.js` | WeChat 默认模板，零引用 |
+| `images/home.png` | 10 张图片零引用（home/map 图标、audio 详情图标等），从未被 wxml/wxss/js 引用 |
+
+同时更新 `README.md` 添加完整的项目结构文档，包含文件级说明、关键流程和组件注册关系表。
+
 ## 2026-05-21 - 登录流程重做：3步→2步 + 首页手机号拦截
 
 ### 背景
