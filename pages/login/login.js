@@ -81,6 +81,18 @@ Page({
 
     const token = getStorage('token')
 
+    // 超时保护：8 秒后自动解锁，防止请求卡死
+    const timeoutId = setTimeout(() => {
+      this.setData({ loading: false })
+      wx.toast({ title: '请求超时，请检查服务端是否启动', icon: 'none' })
+    }, 8000)
+
+    try {
+      const res = await http.post('/user/userBindPhone?phone=' + phone, {}, {
+        Authorization: `Bearer ${token}`
+      }, true)
+
+      clearTimeout(timeoutId)
 
       if (res.code !== 1) {
         this.setData({ loading: false })
