@@ -1,5 +1,28 @@
 # 开发日志
 
+## 2026-06-14 — CSS 去重：loading spinner / 状态配色变量 / 弹窗基础样式
+
+### 改动
+
+| 文件 | 改动 |
+|------|------|
+| `app.wxss` | 新增 loading spinner 通用类（`.loading-screen`/`.loading-spinner`/`.loading-text`/`@keyframes spin`） |
+| `app.wxss` | 新增 6 个 status 配色 CSS 变量（`--status-alarm-*`/`--status-normal-*`/`--status-offline-*`） |
+| `app.wxss` | 新增弹窗基础样式（`.modal-mask`/`.modal-input`/`.modal-btn`/`.modal-btn.cancel`/`.modal-btn.confirm`） |
+| `pages/home/home.wxss` | 移除加载态 CSS（26 行，已迁至 app.wxss）；status 配色改用 `var(--)` |
+| `pages/device-detail/device-detail.wxss` | 移除加载态 CSS（26 行）+ `.modal-mask`/`.modal-input`/`.modal-btn` 重复定义（~80 行）；status 配色改用 `var(--)` |
+| `pages/devicebinding/devicebinding.wxss` | 移除 `.modal-mask`/`.modal-input`/`.modal-btn` 基础定义（~50 行），保留动画和 `:focus` 覆盖 |
+| `pages/setting/setting.wxss` | 移除 `.modal-mask`/`.modal-input`/`.modal-btn` 基础定义（~55 行） |
+
+### 效果
+
+- **6 文件变动，净 -100 行 CSS**
+- loading spinner 不再重复定义，新页面直接引用通用类
+- 状态配色集中管理，改主题色只需改 app.wxss 变量
+- 弹窗基础样式统一，各页只需保留布局/动画/验证等覆盖
+
+---
+
 ## 2026-06-13 - 前端性能优化：并行轮询/下拉刷新/加载状态/死代码清理
 
 ### 背景

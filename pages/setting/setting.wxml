@@ -24,14 +24,15 @@
 
     <!-- 手机号绑定弹窗 -->
     <view class="modal-mask" wx:if="{{showPhoneModal}}" bindtap="hidePhoneModal"></view>
-    <view class="modal-container phone-modal" wx:if="{{showPhoneModal}}">
+    <view class="modal-container" wx:if="{{showPhoneModal}}">
       <view class="modal-title">绑定手机号</view>
-      <view class="modal-desc">手机号将作为紧急联系人，报警时自动呼叫</view>
-      <input class="modal-input {{phoneError ? 'input-error' : ''}}" type="number" maxlength="11" placeholder="请输入手机号" bindinput="onPhoneInput" />
-      <text wx:if="{{phoneError}}" class="input-error-tip">请输入正确的手机号（1开头，11位）</text>
+      <view class="modal-form">
+        <input class="modal-input {{phoneError ? 'input-error' : ''}}" type="number" maxlength="11" placeholder="请输入手机号" bindinput="onPhoneInput" />
+        <text wx:if="{{phoneError}}" class="input-error-tip">请输入正确的手机号（1开头，11位）</text>
+      </view>
       <view class="modal-btn-group">
-        <custom-button text="取消" type="normal" bind:click="hidePhoneModal" customClass="modal-btn-half"></custom-button>
-        <custom-button text="确定" type="orange" bind:click="confirmPhone" customClass="modal-btn-half" disabled="{{phoneError}}"></custom-button>
+        <view class="modal-btn cancel" bindtap="hidePhoneModal" hover-class="btn-press">取消</view>
+        <view class="modal-btn confirm {{phoneError ? 'btn-disabled' : ''}}" bindtap="confirmPhone" hover-class="btn-press">确定</view>
       </view>
     </view>
 

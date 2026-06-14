@@ -146,15 +146,8 @@
   line-height: 1.8;
 }
 
-/* 弹窗样式（核心修改） */
+/* 弹窗样式 */
 .modal-mask {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 998;
   animation: maskFadeIn 0.2s ease;
 }
 
@@ -202,16 +195,6 @@
   padding: 20px;
 }
 
-.modal-input {
-  width: 100%;
-  height: 44px;
-  padding: 0 14px;
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  font-size: 14px;
-  box-sizing: border-box;
-}
-
 .modal-input:focus {
   border-color: var(--orange-primary);
   outline: none;
@@ -223,28 +206,6 @@
   border-top: 1px solid var(--border-color);
   display: flex;
   gap: 12px;
-}
-
-.modal-btn {
-  flex: 1;
-  height: 44px;
-  line-height: 44px;
-  border-radius: 8px;
-  font-size: 15px;
-  border: none;
-}
-
-/* 取消按钮 */
-.modal-btn.cancel {
-  background: var(--bg-main);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-}
-
-/* 确认按钮 */
-.modal-btn.confirm {
-  background: var(--orange-primary);
-  color: white;
 }
 
 .modal-btn.confirm:active {
