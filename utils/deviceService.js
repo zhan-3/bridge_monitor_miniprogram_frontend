@@ -78,14 +78,12 @@ export async function loadDeviceContacts(authToken, deviceId) {
       Authorization: `Bearer ${authToken}`
     });
     if (phoneRes.code === 1 && Array.isArray(phoneRes.data)) {
-      // 后端返回 {"电话": "15053957932", "名称": "张三"}
-      // 真实后端可能不返名称，用本地缓存补
       const nameCache = getStorage('contactNameCache') || {};
       return phoneRes.data.map((item, index) => {
-        const phone = item['电话'] || item.phone || '';
+        const phone = item.phone || '';
         return {
           id: 'c' + index,
-          name: item['名称'] || item.name || nameCache[phone] || '',
+          name: item.name || nameCache[phone] || '',
           phone
         };
       });

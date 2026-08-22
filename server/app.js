@@ -2,6 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const fs = require('fs')
 const path = require('path')
+const qrcode = require('qrcode')
 const app = express()
 
 app.use(cors())
@@ -63,9 +64,9 @@ const initData = () => {
     address: '北京市朝阳区建国路88号'
   })
   DB.contacts.set(sn, [
-    { '电话': '15053957932' },
-    { '电话': '18105487580' },
-    { '电话': '19819692340' }
+    { phone: '15053957932' },
+    { phone: '18105487580' },
+    { phone: '19819692340' }
   ])
   DB.phoneNumbers.set('default', ['13812345678', '13988776655'])
   DB.settings.set(sn, {
@@ -292,7 +293,7 @@ app.post('/user/addPhoneNumber', (req, res) => {
 
   if (number && sn) {
     const contacts = DB.contacts.get(sn) || []
-    contacts.push({ '电话': number, '名称': name || '' })
+    contacts.push({ phone: number, name: name || '' })
     DB.contacts.set(sn, contacts)
   }
 
@@ -306,7 +307,7 @@ app.delete('/user/deletePhone', (req, res) => {
 
   if (number && sn) {
     const contacts = DB.contacts.get(sn) || []
-    const idx = contacts.findIndex(c => c['电话'] === number)
+    const idx = contacts.findIndex(c => c.phone === number)
     if (idx >= 0) {
       contacts.splice(idx, 1)
       DB.contacts.set(sn, contacts)
@@ -391,6 +392,20 @@ app.get('/logs', (req, res) => {
   response(res, 1, 'success', requestLog)
 })
 
+app.get('/qrcode/:sn', async (req, res) => {
+  try {
+    const png = await qrcode.toBuffer(req.params.sn, {
+      width: 300,
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' }
+    })
+    res.set('Content-Type', 'image/png')
+    res.send(png)
+  } catch (e) {
+    response(res, 0, '生成二维码失败', null)
+  }
+})
+
 app.post('/debug/reset', (req, res) => {
   const { scenario, sn } = req.body
   const targetSn = sn || Array.from(DB.devices.keys())[0]
@@ -438,6 +453,9 @@ app.listen(PORT, () => {
 ║  设置接口                                                   ║
 ║    GET  /setting/list                - 设置列表              ║
 ║    POST /setting/update             - 更新设置              ║
+╠═══════════════════════════════════════════════════════════════════╣
+║  工具接口                                                   ║
+║    GET  /qrcode/:sn                 - 生成设备二维码（PNG）   ║
 ╠═══════════════════════════════════════════════════════════════════╣
 ║  调试接口                                                   ║
 ║    GET  /logs                       - 请求日志              ║
