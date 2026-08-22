@@ -1,6 +1,7 @@
 import http from '../../utils/http';
 import { getStorage, setStorage } from '../../utils/storage';
-import { loadDeviceData, loadDeviceContacts, buildMarkers, saveDeviceName } from '../../utils/deviceService';
+import { loadDeviceDetails } from '../../utils/deviceService';
+const { createRequestVersion } = require('../../utils/requestVersion');
 import { DEVICE_STATUS_MAP } from '../../utils/constants';
 
 Page({
@@ -17,21 +18,21 @@ Page({
     swipeOffset: 0,
     touchStartX: 0,
     currentSn: '',
-    currentDeviceToken: ''
+    currentDeviceAccessToken: ''
   },
 
   onLoad(options) {
     if (options.id) {
       const app = getApp();
-      const deviceEntry = (app.globalData.deviceTokens || []).find(d => d.sn === options.id);
+      const deviceEntry = app.getDevice(options.id);
       if (deviceEntry) {
-        app.switchDevice(options.id);
+        app.selectDevice(options.id);
       }
-      const authToken = deviceEntry ? deviceEntry.token : '';
+      const authToken = deviceEntry ? deviceEntry.deviceAccessToken : '';
 
       this.setData({
         currentSn: options.id,
-        currentDeviceToken: authToken
+        currentDeviceAccessToken: authToken
       });
     }
     this.loadDeviceFromAPI();
@@ -44,16 +45,18 @@ Page({
     }
   },
 
-  // 从后端API加载设备数据（使用 deviceService 统一逻辑）
+  // 从后端API并行加载设备状态、位置和联系人。
   async loadDeviceFromAPI() {
-    this.setData({ isLoading: true });
-    const authToken = this.data.currentDeviceToken;
+    if (!this.detailRequests) this.detailRequests = createRequestVersion();
+    const requestVersion = this.detailRequests.begin();
     const currentSn = this.data.currentSn;
+    const app = getApp();
+    const authToken = app.getDeviceAccessToken(currentSn) || this.data.currentDeviceAccessToken;
 
-    const device = await loadDeviceData(currentSn, authToken);
-    device.contacts = await loadDeviceContacts(authToken, currentSn);
-    const markers = buildMarkers(device);
+    this.setData({ isLoading: true });
+    const { device, markers } = await loadDeviceDetails(currentSn, authToken);
 
+    if (!this.detailRequests.isCurrent(requestVersion) || currentSn !== this.data.currentSn) return;
     this.setData({ device, markers, isLoading: false });
   },
 
@@ -84,7 +87,7 @@ Page({
       showEditNameModal: false,
       tempName: ''
     });
-    saveDeviceName(currentSn, newName);
+    getApp().renameDevice(currentSn, newName);
     wx.toast({ title: '保存成功', icon: 'success' });
   },
 
@@ -126,7 +129,7 @@ Page({
 
     try {
       wx.showLoading({ title: '添加中...', mask: true });
-      const authToken = this.data.currentDeviceToken;
+      const authToken = this.data.currentDeviceAccessToken;
       
       const res = await http.post(
         `/user/addPhoneNumber?number=${encodeURIComponent(tempContactPhone)}&name=${encodeURIComponent(tempContactName)}`,
@@ -170,7 +173,7 @@ Page({
 
     try {
       wx.showLoading({ title: '删除中...', mask: true });
-      const authToken = this.data.currentDeviceToken;
+      const authToken = this.data.currentDeviceAccessToken;
 
       const delRes = await http.delete(`/user/deletePhone?number=${encodeURIComponent(contact.phone)}`, {}, {
         Authorization: `Bearer ${authToken}`

@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-GitHub Issues for `zhan-3/bridge_monitor_miniprogram_without_backend`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Local Markdown issues under `.scratch/<feature>/issues/`. See `docs/agents/issue-tracker.md`.
 
 ### Domain docs
 

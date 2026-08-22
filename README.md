@@ -4,7 +4,7 @@
 
 ```
 miniprogram-11-终版/
-├── app.js                      # 全局入口：globalData（token/设备列表）、setToken/switchDevice
+├── app.js                      # 全局入口：globalData（登录凭证/已绑定设备集）、setLoginToken/selectDevice
 ├── app.json                    # 页面注册、窗口配置、权限声明、lazyCodeLoading按需注入
 ├── app.wxss                    # 全局样式：CSS变量（橙色主色调）、button重置
 ├── DEVLOG.md                   # 开发日志（问题背景/方案演进/改动记录）
@@ -64,9 +64,11 @@ miniprogram-11-终版/
 │       └── custom-button.json
 │
 ├── utils/                      # 工具层
-│   ├── http.js                 # HTTP请求封装：wx.request统一拦截、401/403处理、token注入
+│   ├── http.js                 # HTTP请求封装：wx.request统一拦截、401/403处理、登录凭证注入
 │   ├── storage.js              # 存储封装：wx.get/set/remove/clearStorageSync + try/catch
 │   ├── env.js                  # 环境配置：baseURL（develop/trial/release三环境智能切换）
+│   ├── boundDeviceSet.js       # 已绑定设备集：凭证、选择和旧缓存迁移
+│   ├── loginCredential.js      # 登录凭证：用户级凭证读写
 │   ├── deviceService.js        # 设备数据服务：loadDeviceData / loadDeviceContacts / buildMarkers
 │   ├── constants.js            # 常量：DEVICE_STATUS_MAP（状态映射）、DEVICE_TYPE_MAP（SN前缀）
 │   ├── validators.js           # 验证函数：isValidPhone / isValidSN
@@ -95,7 +97,7 @@ miniprogram-11-终版/
 
 ```
 登录: 打开首页 → onShow检查token/手机号 → 无token → login页
-      → doLogin (wx.login → POST /system/log → 存token)
+      → doLogin (wx.login → POST /system/log → 保存登录凭证)
       → confirmPhone (POST /user/userBindPhone) → reLaunch首页
 
 绑定: 扫码 → devicebinding页 → checkLoginStatus

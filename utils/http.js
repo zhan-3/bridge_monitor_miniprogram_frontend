@@ -1,5 +1,5 @@
 // utils/http.js
-import { getStorage, clearStorage, setStorage } from './storage'
+import { getStorage } from './storage'
 import { env } from './env'
 
 function isValidToken(token) {
@@ -9,17 +9,12 @@ function isValidToken(token) {
 
 function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = false }) {
   return new Promise((resolve, reject) => {
-    let token = getStorage('token')
-    
-    if (token && !isValidToken(token)) {
-      console.error('检测到无效token（包含非ASCII字符），清除并重新登录')
-      clearStorage()
-      const app = getApp()
-      app.globalData.token = ''
-      app.globalData.hasBaseLogin = false
-      app.globalData.hasDeviceBound = false
-      app.globalData.deviceTokens = []
-      app.globalData.currentSn = ''
+    const app = getApp()
+    const loginToken = app.getLoginToken()
+
+    if (loginToken && !isValidToken(loginToken)) {
+      console.error('检测到无效登录凭证（包含非ASCII字符），清除并重新登录')
+      app.clearAuthState()
       wx.modal({
         content: '登录状态异常，请重新登录',
         showCancel: false
@@ -30,7 +25,7 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
       return
     }
 
-    const authHeader = header.Authorization || (token ? `Bearer ${token}` : '');
+    const authHeader = header.Authorization || (loginToken ? `Bearer ${loginToken}` : '');
 
     const fullUrl = env.baseURL + url;
 
@@ -52,14 +47,8 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
             content: '登录已失效，请重新登录',
             showCancel: false
           }).then(() => {
-            clearStorage();
             const app = getApp();
-            app.globalData.token = '';
-            app.globalData.hasBaseLogin = false;
-            app.globalData.hasDeviceBound = false;
-            app.globalData.deviceTokens = [];
-            app.globalData.currentSn = '';
-            app.globalData.pendingSN = '';
+            app.clearAuthState();
             wx.reLaunch({ url: '/pages/login/login' });
           })
           reject({ code: 401, msg: '请提供有效的token' })

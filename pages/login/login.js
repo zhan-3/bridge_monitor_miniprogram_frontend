@@ -13,8 +13,8 @@ Page({
   },
 
   onLoad() {
-    // 已有 token 且有手机号，直接进首页
-    const token = getStorage('token')
+    // 已有登录凭证且有手机号，直接进首页
+    const token = getApp().getLoginToken()
     const isLogin = getStorage('isLogin')
     const userInfo = getStorage('userInfo') || {}
     if (token && isLogin && userInfo.phone) {
@@ -43,10 +43,8 @@ Page({
 
       const token = res.data
       const app = getApp()
-      app.setToken(token)
-      app.globalData.hasBaseLogin = true
+      app.setLoginToken(token)
       setStorage('isLogin', true)
-      setStorage('loginToken', token)
 
       // 检查是否已有手机号
       const userInfo = getStorage('userInfo') || {}
@@ -79,7 +77,7 @@ Page({
 
     this.setData({ loading: true })
 
-    const token = getStorage('token')
+    const token = getApp().getLoginToken()
 
     // 超时保护：8 秒后自动解锁，防止请求卡死
     const timeoutId = setTimeout(() => {

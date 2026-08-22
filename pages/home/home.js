@@ -21,7 +21,7 @@ Page({
 
   onShow() {
     const isLogin = getStorage('isLogin');
-    const token = getStorage('token');
+    const token = getApp().getLoginToken();
 
     if (!isLogin || !token) {
       this.setData({ isLogin: false, userInfo: {}, pageLoading: false });
@@ -48,7 +48,7 @@ Page({
       isLogin: true,
       hasPhone: true,
       userInfo,
-      currentSn: app.globalData.currentSn
+      currentSn: app.globalData.selectedDeviceSn
     });
     Promise.all([
       this.loadUserInfo(),
@@ -105,24 +105,24 @@ Page({
     this.isLoadingDevices = true;
     try {
       const app = getApp();
-      const deviceTokens = app.globalData.deviceTokens;
+      const boundDevices = app.listBoundDevices();
 
-      if (!deviceTokens || deviceTokens.length === 0) {
+      if (!boundDevices || boundDevices.length === 0) {
         this.setData({ devices: [] });
         return;
       }
 
       // 并行请求所有设备状态
       const results = await Promise.allSettled(
-        deviceTokens.map(dt =>
-          http.get('/user/bind/status', { deviceSn: dt.sn }, {
-            Authorization: `Bearer ${dt.token}`
+        boundDevices.map(device =>
+          http.get('/user/bind/status', { deviceSn: device.sn }, {
+            Authorization: `Bearer ${device.deviceAccessToken}`
           }).then(bindRes => {
             if (bindRes.code === 1 && bindRes.data) {
-              const displayName = (dt.name && dt.name !== dt.sn) ? dt.name : dt.sn;
+              const displayName = (device.name && device.name !== device.sn) ? device.name : device.sn;
               return {
-                id: dt.sn,
-                sn: dt.sn,
+                id: device.sn,
+                sn: device.sn,
                 name: displayName,
                 status: bindRes.data.status || 'normal',
                 statusText: DEVICE_STATUS_MAP[bindRes.data.status] || '正常'
@@ -130,7 +130,7 @@ Page({
             }
             return null;
           }).catch(err => {
-            console.error('获取设备状态失败：', dt.sn, err);
+            console.error('获取设备状态失败：', device.sn, err);
             return null;
           })
         )
@@ -178,7 +178,7 @@ Page({
   goDeviceDetail(e) {
     const sn = e.currentTarget.dataset.id;
     // 切换到该设备的token，后续所有请求自动使用对应设备数据
-    getApp().switchDevice(sn);
+    getApp().selectDevice(sn);
     this.setData({ currentSn: sn });
     wx.navigateTo({
       url: `/pages/device-detail/device-detail?id=${sn}`

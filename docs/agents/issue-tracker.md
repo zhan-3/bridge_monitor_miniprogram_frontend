@@ -1,10 +1,11 @@
 # Issue tracker
 
-This repository tracks work in **GitHub Issues** for `zhan-3/bridge_monitor_miniprogram_without_backend`.
+This repository tracks work as **local Markdown issues**.
 
 ## Workflow
 
-- Create issues with the `gh` CLI.
-- Publish tickets in dependency order so blocking relationships can reference existing issue numbers.
-- Use GitHub issue bodies to record acceptance criteria and blocked-by relationships.
-- PRs are not the request surface for triage.
+- Store one ticket per file under `.scratch/<feature>/issues/`.
+- Number tickets from `01` in dependency order, with blockers first.
+- Record acceptance criteria, blocking edges, and `ready-for-agent` status in every ticket.
+- Work the frontier: start only tickets whose blockers are complete.
+- Do not require GitHub Issues or the `gh` CLI.

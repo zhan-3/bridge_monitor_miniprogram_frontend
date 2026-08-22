@@ -3,17 +3,36 @@ import http from './http';
 import { DEVICE_STATUS_MAP } from './constants';
 import { getStorage, setStorage } from './storage';
 
-/**
- * 加载设备基本信息（名称、状态、GPS位置）
- * @param {string} deviceId - 设备SN码
- * @param {string} authToken - 该设备对应的 Bearer token
- * @returns {Object} device 对象
- */
-export async function loadDeviceData(deviceId, authToken) {
-  
-  const device = {
+const { loadDeviceDetailsConcurrently } = require('./deviceDetailsLoader');
+
+async function loadDeviceStatus(deviceId, authToken) {
+  try {
+    const bindRes = await http.get('/user/bind/status', { deviceSn: deviceId }, {
+      Authorization: `Bearer ${authToken}`
+    });
+    return bindRes.code === 1 && bindRes.data ? bindRes.data.status : null;
+  } catch (err) {
+    console.error('[deviceService] 获取绑定状态失败：', err);
+    return null;
+  }
+}
+
+async function loadDeviceLocation(deviceId, authToken) {
+  try {
+    const locRes = await http.get('/user/getLocation', { deviceSn: deviceId }, {
+      Authorization: `Bearer ${authToken}`
+    });
+    return locRes.code === 1 && locRes.data ? locRes.data : null;
+  } catch (err) {
+    console.error('[deviceService] 获取设备位置失败：', err);
+    return null;
+  }
+}
+
+function createDevice(deviceId) {
+  return {
     id: deviceId,
-    sn: deviceId,           // sn 与 id 相同，供 setting.wxml 展示序列号
+    sn: deviceId,
     name: deviceId,
     status: 'normal',
     statusText: '正常',
@@ -22,56 +41,42 @@ export async function loadDeviceData(deviceId, authToken) {
     address: '设备位置',
     contacts: []
   };
+}
 
-  // 获取绑定信息（bind/status 返回 SN 数组，不含自定义名称）
-  try {
-    const bindRes = await http.get('/user/bind/status', { deviceSn: deviceId }, {
-      Authorization: `Bearer ${authToken}`
-    });
-
-    if (bindRes.code === 1 && bindRes.data) {
-      if (bindRes.data.status) {
-        device.status = bindRes.data.status;
-        device.statusText = DEVICE_STATUS_MAP[device.status] || '正常';
-      }
-    }
-  } catch (err) {
-    console.error('[deviceService] 获取绑定状态失败：', err);
-  }
-
-  // 优先使用本地 deviceTokens 中保存的自定义名称
+function applyStoredName(device) {
   try {
     const app = getApp();
-    const tokenList = (app && app.globalData && app.globalData.deviceTokens) || [];
-    const stored = tokenList.find(d => d.sn === deviceId);
-    if (stored && stored.name && stored.name !== deviceId) {
+    const stored = app && app.getDevice ? app.getDevice(device.sn) : null;
+    if (stored && stored.name && stored.name !== device.sn) {
       device.name = stored.name;
     }
-  } catch (e) { /* noop */ }
-
-  // 获取GPS位置
-  try {
-    const locRes = await http.get('/user/getLocation', { deviceSn: deviceId }, {
-      Authorization: `Bearer ${authToken}`
-    });
-
-    if (locRes.code === 1 && locRes.data) {
-      device.latitude = parseFloat(locRes.data.gpsLat) || 39.9042;
-      device.longitude = parseFloat(locRes.data.gpsLng) || 116.4074;
-      device.address = locRes.data.address || '设备位置';
-    }
   } catch (err) {
-    console.error('[deviceService] 获取设备位置失败：', err);
+    // 页面预览或测试环境可能没有 app 实例，使用 SN 作为默认名称。
+  }
+}
+
+export async function loadDeviceData(deviceId, authToken) {
+  const device = createDevice(deviceId);
+  applyStoredName(device);
+
+  const [status, location] = await Promise.all([
+    loadDeviceStatus(deviceId, authToken),
+    loadDeviceLocation(deviceId, authToken)
+  ]);
+
+  if (status) {
+    device.status = status;
+    device.statusText = DEVICE_STATUS_MAP[status] || '正常';
+  }
+  if (location) {
+    device.latitude = parseFloat(location.gpsLat) || 39.9042;
+    device.longitude = parseFloat(location.gpsLng) || 116.4074;
+    device.address = location.address || '设备位置';
   }
 
   return device;
 }
 
-/**
- * 加载设备紧急联系人列表
- * @param {string} authToken - 该设备对应的 Bearer token
- * @returns {Array} contacts 数组
- */
 export async function loadDeviceContacts(authToken, deviceId) {
   try {
     const phoneRes = await http.get('/user/userGetPhone', { deviceSn: deviceId }, {
@@ -94,11 +99,16 @@ export async function loadDeviceContacts(authToken, deviceId) {
   return [];
 }
 
-/**
- * 根据设备数据构建地图标记
- * @param {Object} device
- * @returns {Array} markers
- */
+export async function loadDeviceDetails(deviceId, authToken) {
+  return loadDeviceDetailsConcurrently({
+    deviceId,
+    authToken,
+    loadDeviceData,
+    loadDeviceContacts,
+    buildMarkers
+  });
+}
+
 export function buildMarkers(device) {
   const lat = Number(device.latitude);
   const lng = Number(device.longitude);
@@ -126,15 +136,4 @@ export function buildMarkers(device) {
     },
     animation: true
   }];
-}
-
-export function saveDeviceName(sn, newName) {
-  const app = getApp();
-  const deviceTokens = app.globalData.deviceTokens || [];
-  const idx = deviceTokens.findIndex(d => d.sn === sn);
-  if (idx >= 0) {
-    deviceTokens[idx].name = newName;
-    app.globalData.deviceTokens = deviceTokens;
-    setStorage('deviceTokens', deviceTokens);
-  }
 }

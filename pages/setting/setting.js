@@ -1,4 +1,4 @@
-import { loadDeviceData, buildMarkers, saveDeviceName } from '../../utils/deviceService';
+import { loadDeviceData, buildMarkers } from '../../utils/deviceService';
 import http from '../../utils/http';
 import { getStorage, setStorage } from '../../utils/storage';
 import { isValidPhone } from '../../utils/validators';
@@ -67,8 +67,8 @@ Page({
 
   async loadDevice(deviceId) {
     const app = getApp();
-    const deviceEntry = app.globalData.deviceTokens.find(d => d.sn === deviceId);
-    const authToken = deviceEntry ? deviceEntry.token : '';
+    const deviceEntry = app.getDevice(deviceId);
+    const authToken = deviceEntry ? deviceEntry.deviceAccessToken : '';
 
     const device = await loadDeviceData(deviceId, authToken);
     const markers = buildMarkers(device);
@@ -146,7 +146,7 @@ Page({
       return;
     }
 
-    const token = getStorage('token');
+    const token = getApp().getLoginToken();
     if (!token) {
       wx.toast({ title: '请先完成登录', icon: 'error' });
       return;
@@ -214,7 +214,7 @@ Page({
       showEditNameModal: false,
       tempName: ''
     });
-    saveDeviceName(device.sn, newName);
+    getApp().renameDevice(device.sn, newName);
     wx.toast({ title: '名称已修改', icon: 'success' });
   },
 
@@ -252,8 +252,7 @@ Page({
 
           try {
             const app = getApp();
-            const deviceEntry = (app.globalData.deviceTokens || []).find(d => d.sn === device.sn);
-            const authToken = deviceEntry ? deviceEntry.token : '';
+            const authToken = app.getDeviceAccessToken(device.sn);
             await http.post('/device/updateLocation', {
               deviceSn: device.sn,
               latitude,
@@ -301,15 +300,7 @@ Page({
     const { device, isDeviceSetting } = this.data;
 
     if (isDeviceSetting && device) {
-      // 将设备名称同步到 deviceTokens
-      const app = getApp();
-      const deviceTokens = app.globalData.deviceTokens || [];
-      const idx = deviceTokens.findIndex(d => d.sn === device.sn);
-      if (idx >= 0) {
-        deviceTokens[idx].name = device.name;
-        app.globalData.deviceTokens = deviceTokens;
-        setStorage('deviceTokens', deviceTokens);
-      }
+      getApp().renameDevice(device.sn, device.name);
     }
 
     const { autoRecord, qualityIndex, dayIndex, alarmPush, alarmSound, disconnectWarn } = this.data;

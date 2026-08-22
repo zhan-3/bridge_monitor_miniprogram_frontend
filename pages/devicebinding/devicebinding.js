@@ -175,14 +175,14 @@ Page({
     try {
       wx.showLoading({ title: '绑定设备中...', mask: true });
 
-      const currentToken = getStorage('loginToken') || getStorage('token');
+      const loginToken = getApp().getLoginToken();
 
       // deviceSn 通过 URL 查询参数传递
       let bindRes = await http.post(`/user/bind/device?deviceSn=${encodeURIComponent(sn)}&deviceId=${encodeURIComponent(sn)}`, {
         deviceSn: sn,
         deviceId: sn
       }, {
-        Authorization: `Bearer ${currentToken}`
+        Authorization: `Bearer ${loginToken}`
       }, true);
 
       if (bindRes.code === 1 && bindRes.data === '绑定成功') {
@@ -190,24 +190,13 @@ Page({
           deviceSn: sn,
           deviceId: sn
         }, {
-          Authorization: `Bearer ${currentToken}`
+          Authorization: `Bearer ${loginToken}`
         }, true);
       }
 
       if (bindRes.code === 1 && bindRes.data && typeof bindRes.data === 'string' && !/[\u4e00-\u9fa5]/.test(bindRes.data)) {
         const app = getApp();
-
-        app.globalData.deviceTokens = app.globalData.deviceTokens || [];
-        const index = app.globalData.deviceTokens.findIndex(d => d.sn === sn);
-        if (index >= 0) {
-          app.globalData.deviceTokens[index] = { sn, token: bindRes.data, name: sn };
-        } else {
-          app.globalData.deviceTokens.push({ sn, token: bindRes.data, name: sn });
-        }
-        setStorage('deviceTokens', app.globalData.deviceTokens);
-        app.globalData.currentSn = sn;
-        app.globalData.hasDeviceBound = true;
-        setStorage('currentSn', sn);
+        app.bindDevice(sn, bindRes.data, sn);
 
         wx.toast({ title: '绑定成功', icon: 'success' });
         setTimeout(() => {

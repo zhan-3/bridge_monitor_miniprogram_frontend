@@ -141,7 +141,10 @@ Page({
   },
 
 getAllDeviceRecord() {
-    http.get("/user/getRecord")
+    const deviceAccessToken = getApp().getDeviceAccessToken();
+    http.get("/user/getRecord", {}, deviceAccessToken ? {
+      Authorization: `Bearer ${deviceAccessToken}`
+    } : undefined)
       .then(res => {
         if ( res.code !== 1) {
           const errMsg = res.msg || '获取数据失败';
