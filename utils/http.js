@@ -2,6 +2,8 @@
 import { getStorage } from './storage'
 import { env } from './env'
 
+const { classifyAuthResponse } = require('./httpPolicy')
+
 function isValidToken(token) {
   if (!token || typeof token !== 'string') return false
   return !/[\u4e00-\u9fa5]/.test(token)
@@ -42,7 +44,7 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
         const { statusCode, data } = res
 
         // === HTTP状态码处理 ===
-        if (statusCode === 401) {
+        if (classifyAuthResponse(statusCode, skipAuthCheck).type === 'auth-expired') {
           wx.modal({
             content: '登录已失效，请重新登录',
             showCancel: false
@@ -55,7 +57,7 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
           return
         }
 
-        if (statusCode === 403 && !skipAuthCheck) {
+        if (classifyAuthResponse(statusCode, skipAuthCheck).type === 'device-required') {
           reject({ code: 403, msg: '请先绑定设备' })
           return
         }

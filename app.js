@@ -4,6 +4,7 @@ import { setStorage, getStorage, removeStorage, clearStorage } from './utils/sto
 
 const { createBoundDeviceSet } = require('./utils/boundDeviceSet')
 const { createLoginCredential } = require('./utils/loginCredential')
+const { createAuthReset } = require('./utils/authReset')
 
 function wxStorageAdapter() {
   return {
@@ -28,6 +29,12 @@ App({
     const storage = wxStorageAdapter()
     this.loginCredential = createLoginCredential(storage)
     this.boundDeviceSet = createBoundDeviceSet(storage)
+    this.authReset = createAuthReset({
+      loginCredential: this.loginCredential,
+      boundDeviceSet: this.boundDeviceSet,
+      removeStorage,
+      clearStorage
+    })
 
     const loginToken = this.loginCredential.get()
     if (loginToken && getStorage('isLogin')) {
@@ -89,11 +96,7 @@ App({
   },
 
   clearAuthState() {
-    if (this.loginCredential) this.loginCredential.clear()
-    if (this.boundDeviceSet) this.boundDeviceSet.clear()
-    removeStorage('isLogin')
-    removeStorage('userInfo')
-    clearStorage()
+    if (this.authReset) this.authReset.clear()
     this.globalData.loginToken = ''
     this.globalData.hasBaseLogin = false
     this.globalData.boundDevices = []
