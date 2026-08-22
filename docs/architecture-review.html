@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>微信小程序前端架构评审</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";mermaid.initialize({startOnLoad:true,theme:"neutral",securityLevel:"loose"});</script>
+<style>.deep{background:linear-gradient(135deg,#0f172a,#1e293b)}.seam{border-left:2px dashed #94a3b8}</style>
+</head>
+<body class="bg-stone-50 text-slate-900 font-sans"><main class="max-w-6xl mx-auto px-6 py-12 space-y-10">
+<header><p class="text-xs uppercase tracking-widest text-emerald-700">ARCHITECTURE REVIEW · FRONTEND ONLY</p><h1 class="text-4xl font-serif mt-2">微信小程序前端：深模块候选</h1><p class="mt-4 text-slate-600">范围：设备绑定、联系人、请求策略和二维码解析。后端不改；未发现 CONTEXT.md 或 docs/adr/。</p><div class="mt-4 flex gap-4 text-xs text-slate-500"><span>■ module</span><span>⋮⋮ seam</span><span class="text-red-600">→ 泄漏</span><span class="rounded bg-slate-800 px-2 py-1 text-white">deep module</span></div></header>
+<section class="space-y-8">
+<article id="device-session" class="rounded-2xl border bg-white p-6 shadow-sm space-y-5"><div class="flex justify-between gap-4"><div><h2 class="text-2xl font-serif">1. 收拢设备会话状态</h2><span class="inline-block mt-2 rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-800">Strong</span></div><p class="text-sm text-slate-500">最高 leverage；多处写入同一组设备状态。</p></div><p class="font-mono text-sm">pages/devicebinding/devicebinding.js · utils/deviceService.js · utils/http.js · utils/storage.js</p><div class="grid md:grid-cols-2 gap-4"><div><p class="text-xs uppercase tracking-wider mb-2">Before · 分散而浅</p><div class="rounded border bg-slate-50 p-3"><pre class="mermaid">flowchart LR
+P[devicebinding page] --> G[getApp globalData]
+D[deviceService] --> G
+H[http] --> G
+P -. token/reset .-> S[storage]
+H -. 401/reset .-> P</pre></div></div><div><p class="text-xs uppercase tracking-wider mb-2">After · 一个 deep module</p><div class="deep rounded-xl p-5 text-white"><div class="rounded border border-slate-500 p-3 text-center text-xs">small interface · device session</div><div class="mt-4 rounded bg-slate-700 p-4 text-sm text-slate-300">绑定、当前设备、token 选择、清理规则<br>implementation 内部消化 globalData / storage</div></div></div></div><div class="grid md:grid-cols-3 gap-5 text-sm"><p><b>Problem</b><br><span class="text-slate-600">页面、http、deviceService 都会重新拼出 token 和 reset 规则；interface 隐式且 shallow。</span></p><p><b>Solution</b><br><span class="text-slate-600">将状态转换、持久化和清理集中到一个前端 module；页面只保留视图状态。</span></p><p><b>Benefits</b><br><span class="text-slate-600">locality 集中规则；leverage 覆盖多个调用点；测试只穿过一个 interface。</span></p></div></article>
+<article id="contacts" class="rounded-2xl border bg-white p-6 shadow-sm space-y-5"><div class="flex justify-between gap-4"><div><h2 class="text-2xl font-serif">2. 收拢联系人数据整形</h2><span class="inline-block mt-2 rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-800">Strong</span></div><p class="text-sm text-slate-500">字段名已修正，但 identity、校验和缓存仍泄漏。</p></div><p class="font-mono text-sm">utils/deviceService.js · utils/validators.js · pages/device-detail/device-detail.js · utils/storage.js</p><div class="grid md:grid-cols-2 gap-4"><div><p class="text-xs uppercase tracking-wider mb-2">Before · 数据规则泄漏</p><div class="rounded border bg-slate-50 p-3"><pre class="mermaid">flowchart TB
+R[remote contact data] --> M[deviceService mapping]
+M --> I[index id]
+P[device-detail page] --> V[duplicate phone regex]
+P --> C[contactNameCache]
+I -. reorder risk .-> P</pre></div></div><div><p class="text-xs uppercase tracking-wider mb-2">After · 数据 module 加深</p><div class="deep rounded-xl p-5 text-white"><div class="rounded border border-slate-500 p-3 text-center text-xs">联系人 interface</div><div class="mt-4 rounded bg-slate-700 p-4 text-sm text-slate-300">normalize · validate · stable identity<br>cache fallback · add/remove orchestration</div></div></div></div><div class="grid md:grid-cols-3 gap-5 text-sm"><p><b>Problem</b><br><span class="text-slate-600">页面重复 phone 校验、缓存写入和 index id；返回顺序变化会影响删除目标。</span></p><p><b>Solution</b><br><span class="text-slate-600">前端 module 统一 normalize、校验、稳定 identity 和缓存策略；后端保持不变。</span></p><p><b>Benefits</b><br><span class="text-slate-600">locality 一处修改；leverage 覆盖列表和详情；测试覆盖多种数据形状。</span></p></div></article>
+<article id="http" class="rounded-2xl border bg-white p-6 shadow-sm space-y-5"><div class="flex justify-between gap-4"><div><h2 class="text-2xl font-serif">3. 让 http module 吸收请求策略</h2><span class="inline-block mt-2 rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-800">Worth exploring</span></div><p class="text-sm text-slate-500">收益高，但应排在设备会话之后。</p></div><p class="font-mono text-sm">utils/http.js · utils/storage.js · utils/validators.js · pages/login/login.js · pages/devicebinding/devicebinding.js</p><div class="grid md:grid-cols-2 gap-4"><div><p class="text-xs uppercase tracking-wider mb-2">Before · transport 与策略纠缠</p><div class="rounded border bg-slate-50 p-3"><pre class="mermaid">sequenceDiagram
+participant P as page
+participant H as http
+participant W as wx
+participant A as app state
+P->>H: request
+H->>H: token check
+H->>W: request
+W-->>H: 401 / business code
+H->>A: logout/reset
+H->>P: modal/toast/navigation</pre></div></div><div><p class="text-xs uppercase tracking-wider mb-2">After · seam 清晰</p><div class="deep rounded-xl p-5 text-white"><div class="rounded border border-slate-500 p-3 text-center text-xs">页面 interface</div><div class="my-4 text-center">⋮⋮ seam</div><div class="rounded bg-slate-700 p-4 text-center text-sm">http policy module<br><span class="text-slate-300">transport / auth failure / business result</span></div><div class="my-4 text-center">⋮⋮ seam</div><div class="rounded bg-slate-700 p-3 text-center text-xs">WeChat adapter</div></div></div></div><div class="grid md:grid-cols-3 gap-5 text-sm"><p><b>Problem</b><br><span class="text-slate-600">小 interface 背后同时做 token、全局清理、弹窗、导航和业务码处理，测试必须伪造 wx 与 app。</span></p><p><b>Solution</b><br><span class="text-slate-600">仅重排前端 implementation：集中 transport 结果、认证失败和界面提示；后端协议不变。</span></p><p><b>Benefits</b><br><span class="text-slate-600">locality 集中失败策略；adapter 可替换；减少页面副作用知识。</span></p></div></article>
+<article id="qr" class="rounded-2xl border bg-white p-6 shadow-sm space-y-5"><div class="flex justify-between gap-4"><div><h2 class="text-2xl font-serif">4. 收拢二维码结果解析（仅前端）</h2><span class="inline-block mt-2 rounded-full bg-slate-100 px-2 py-1 text-xs">Speculative</span></div><p class="text-sm text-slate-500">仅在二维码流程仍会扩展时做。</p></div><p class="font-mono text-sm">pages/devicebinding/devicebinding.js · utils/validators.js；后端不纳入改动</p><div class="grid md:grid-cols-2 gap-4"><div><p class="text-xs uppercase tracking-wider mb-2">Before</p><div class="rounded border bg-slate-50 p-3"><pre class="mermaid">flowchart LR
+S[scan result] --> P[devicebinding page]
+P --> X{raw or scene?}
+X --> T[string token check]
+T --> B[bind flow]
+P -. parse rules .-> V[SN validator]</pre></div></div><div><p class="text-xs uppercase tracking-wider mb-2">After</p><div class="deep rounded-xl p-5 text-white"><div class="rounded border border-slate-500 p-3 text-center text-xs">small QR-result interface</div><div class="mt-4 rounded bg-slate-700 p-4 text-sm">解析 raw / scene，校验 SN，返回 binding data</div></div></div></div><div class="grid md:grid-cols-3 gap-5 text-sm"><p><b>Problem</b><br><span class="text-slate-600">解析分支和 token 判断埋在页面。</span></p><p><b>Solution</b><br><span class="text-slate-600">仅集中前端解析和校验；endpoint、图片生成和后端协议不改。</span></p><p><b>Benefits</b><br><span class="text-slate-600">locality 集中输入规则；round-trip 测试直接；后端风险为零。</span></p></div></article>
+</section>
+<section class="rounded-2xl bg-slate-900 p-8 text-white"><p class="text-xs uppercase tracking-widest text-emerald-300">TOP RECOMMENDATION</p><h2 class="mt-2 text-3xl font-serif">先探索「收拢设备会话状态」</h2><p class="mt-3 text-slate-300">它同时触及三个近期热点；一次 deepening 能最大化 locality 与 leverage，并为联系人与请求策略留下更清晰的 seam。</p><a href="#device-session" class="mt-5 inline-block rounded bg-emerald-400 px-4 py-2 text-sm text-slate-950">跳到候选 1 ↑</a></section>
+<footer class="text-xs text-slate-500">本报告为架构探索，不修改后端代码。</footer></main></body></html>
