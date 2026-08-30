@@ -34,11 +34,11 @@ function createDevice(deviceId) {
     id: deviceId,
     sn: deviceId,
     name: deviceId,
-    status: 'normal',
-    statusText: '正常',
-    latitude: 39.9042,
-    longitude: 116.4074,
-    address: '设备位置',
+    status: 'unknown',
+    statusText: '数据不可用',
+    latitude: null,
+    longitude: null,
+    address: '',
     contacts: []
   };
 }
@@ -66,12 +66,14 @@ export async function loadDeviceData(deviceId, authToken) {
 
   if (status) {
     device.status = status;
-    device.statusText = DEVICE_STATUS_MAP[status] || '正常';
+    device.statusText = DEVICE_STATUS_MAP[status] || '未知状态';
   }
   if (location) {
-    device.latitude = parseFloat(location.gpsLat) || 39.9042;
-    device.longitude = parseFloat(location.gpsLng) || 116.4074;
-    device.address = location.address || '设备位置';
+    const latitude = Number(location.gpsLat);
+    const longitude = Number(location.gpsLng);
+    device.latitude = Number.isFinite(latitude) ? latitude : null;
+    device.longitude = Number.isFinite(longitude) ? longitude : null;
+    device.address = location.address || '';
   }
 
   return device;

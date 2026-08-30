@@ -1,7 +1,7 @@
 <view class="setting-container">
   <scroll-view class="setting-scroll" scroll-y>
     <!-- 用户资料卡片（仅主页进入时展示） -->
-    <white-card wx:if="{{!isDeviceSetting}}" title="👤 个人资料" customClass="setting-module-card">
+    <white-card wx:if="{{!isDeviceSetting}}" title="个人资料" titleIcon="user-round" customClass="setting-module-card">
       <view class="profile-card">
         <view class="profile-avatar-row">
           <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
@@ -16,7 +16,7 @@
           </view>
         </view>
         <button class="bind-phone-btn" wx:if="{{!userInfo.phone}}" bindtap="showPhoneModal">
-          <text class="bind-phone-icon">📱</text>
+          <app-icon name="smartphone" size="16" />
           <text>绑定手机号</text>
         </button>
       </view>
@@ -28,16 +28,16 @@
       <view class="modal-title">绑定手机号</view>
       <view class="modal-form">
         <input class="modal-input {{phoneError ? 'input-error' : ''}}" type="number" maxlength="11" placeholder="请输入手机号" bindinput="onPhoneInput" />
-        <text wx:if="{{phoneError}}" class="input-error-tip">请输入正确的手机号（1开头，11位）</text>
+        <text wx:if="{{phoneErrorMessage}}" class="input-error-tip">{{phoneErrorMessage}}</text>
       </view>
       <view class="modal-btn-group">
-        <view class="modal-btn cancel" bindtap="hidePhoneModal" hover-class="btn-press">取消</view>
-        <view class="modal-btn confirm {{phoneError ? 'btn-disabled' : ''}}" bindtap="confirmPhone" hover-class="btn-press">确定</view>
+        <view class="modal-btn cancel {{isBindingPhone ? 'btn-disabled' : ''}}" bindtap="hidePhoneModal" hover-class="btn-press">取消</view>
+        <view class="modal-btn confirm {{phoneError || isBindingPhone ? 'btn-disabled' : ''}}" bindtap="confirmPhone" hover-class="btn-press">{{isBindingPhone ? '保存中…' : '确定'}}</view>
       </view>
     </view>
 
-    <block wx:if="{{isDeviceSetting}}">
-      <white-card title="📍 设备位置设置" customClass="setting-module-card">
+    <block wx:if="{{isDeviceSetting && device}}">
+      <white-card title="设备位置设置" titleIcon="map-pin" customClass="setting-module-card">
         <view class="location-card">
           <view class="location-map">
             <map
@@ -55,26 +55,26 @@
           <view class="location-info">
             <view class="location-name">{{device.name}}</view>
             <view class="location-address">
-              <text class="address-icon">📍</text>
+              <app-icon name="map-pin" size="14" muted="{{true}}" />
               <text class="address-text">{{device.address || '请选择设备安装位置'}}</text>
             </view>
           </view>
           <view class="location-actions">
             <button class="location-btn" bindtap="chooseLocation">
-              <text class="btn-icon">📍</text>
+              <app-icon name="map-pin" size="16" />
               <text class="btn-text">选择位置</text>
             </button>
           </view>
         </view>
       </white-card>
 
-      <white-card title="📋 设备信息" customClass="setting-module-card">
+      <white-card title="设备信息" titleIcon="clipboard-list" customClass="setting-module-card">
         <view class="device-info-grid">
           <view class="info-item name-item" bindtap="editDeviceName">
             <text class="info-label">名称</text>
             <view class="info-value-row">
               <text class="info-value">{{device.name}}</text>
-              <text class="edit-icon">✎</text>
+              <app-icon name="pencil" size="15" label="编辑设备名称" />
             </view>
           </view>
           <view class="info-item">
@@ -89,7 +89,7 @@
       </white-card>
     </block>
 
-    <white-card title="🎙️ 录音设置" customClass="setting-module-card" footerText="报警时现场录音相关配置">
+    <white-card title="录音设置" titleIcon="mic" customClass="setting-module-card" footerText="报警时现场录音相关配置">
       <view class="setting-item">
         <view class="item-label">报警自动录音</view>
         <switch class="item-switch" checked="{{autoRecord}}" bindchange="switchAutoRecord" />
@@ -108,7 +108,7 @@
       </view>
     </white-card>
 
-    <white-card title="🔧 硬件报警设置" customClass="setting-module-card" footerText="报警器硬件与APP联动配置">
+    <white-card title="硬件报警设置" titleIcon="settings-2" customClass="setting-module-card" footerText="报警器硬件与APP联动配置">
       <view class="setting-item">
         <view class="item-label">APP报警推送</view>
         <switch class="item-switch" checked="{{alarmPush}}" bindchange="switchAlarmPush" />
@@ -124,7 +124,7 @@
     </white-card>
 
       <view class="save-btn-container">
-      <custom-button text="保存所有设置" type="orange" size="large" customClass="save-btn" bind:click="saveSetting"></custom-button>
+      <custom-button text="{{isSaving ? '保存中…' : '保存所有设置'}}" type="orange" size="large" disabled="{{isSaving}}" customClass="save-btn" bind:click="saveSetting"></custom-button>
     </view>
   </scroll-view>
 </view>

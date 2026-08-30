@@ -1,0 +1,9 @@
+<image
+  wx:if="{{name}}"
+  class="app-icon {{muted ? 'is-muted' : ''}}"
+  src="/images/icons/{{name}}.svg"
+  mode="aspectFit"
+  style="width: {{size}}px; height: {{size}}px;"
+  aria-role="{{label ? 'img' : 'presentation'}}"
+  aria-label="{{label}}"
+/>

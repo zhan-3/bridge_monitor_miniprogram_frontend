@@ -33,11 +33,14 @@ const modal = (options = {}) => {
     // Object.asign 合并参数 赋值给空对象， 不影响默认参数
     const opts = Object.assign({}, defaultOpt, options)
     wx.showModal({
-      //将合并后的参数通过展开运算符赋值给wx.showModal对象
+      // 将合并后的参数通过展开运算符赋值给 wx.showModal 对象。
       ...opts,
-      complete ({confirm, cancel}) {
-        confirm && resolve(true)
-        cancel && resolve(false)
+      success({ confirm }) {
+        resolve(Boolean(confirm))
+      },
+      fail() {
+        // 系统弹窗调用失败时按取消处理，避免 await 永久挂起。
+        resolve(false)
       }
     })
   })

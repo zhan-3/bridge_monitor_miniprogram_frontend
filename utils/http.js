@@ -4,25 +4,40 @@ import { env } from './env'
 
 const { classifyAuthResponse } = require('./httpPolicy')
 
+let authExpiryFlow = null
+
+function handleAuthExpired(content = '登录已失效，请重新登录') {
+  if (!authExpiryFlow) {
+    authExpiryFlow = Promise.resolve(wx.modal({
+      content,
+      showCancel: false
+    }))
+      .catch(() => undefined)
+      .then(() => {
+        const app = getApp()
+        app.clearAuthState()
+        wx.reLaunch({ url: '/pages/login/login' })
+      })
+      .finally(() => {
+        authExpiryFlow = null
+      })
+  }
+  return authExpiryFlow
+}
+
 function isValidToken(token) {
   if (!token || typeof token !== 'string') return false
   return !/[\u4e00-\u9fa5]/.test(token)
 }
 
-function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = false }) {
+function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = false, withAuth = true }) {
   return new Promise((resolve, reject) => {
     const app = getApp()
-    const loginToken = app.getLoginToken()
+    const loginToken = withAuth ? app.getLoginToken() : ''
 
-    if (loginToken && !isValidToken(loginToken)) {
+    if (withAuth && loginToken && !isValidToken(loginToken)) {
       console.error('检测到无效登录凭证（包含非ASCII字符），清除并重新登录')
-      app.clearAuthState()
-      wx.modal({
-        content: '登录状态异常，请重新登录',
-        showCancel: false
-      }).then(() => {
-        wx.reLaunch({ url: '/pages/login/login' })
-      })
+      handleAuthExpired('登录状态异常，请重新登录')
       reject({ code: -1, msg: '无效token' })
       return
     }
@@ -37,28 +52,30 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
       data,
       header: {
         'Content-Type': 'application/json',
-        ...(authHeader ? { Authorization: authHeader } : {}),
+        ...header,
+        ...(authHeader ? { Authorization: authHeader } : {})
       },
       timeout: 15000,
       success(res) {
         const { statusCode, data } = res
 
         // === HTTP状态码处理 ===
-        if (classifyAuthResponse(statusCode, skipAuthCheck).type === 'auth-expired') {
-          wx.modal({
-            content: '登录已失效，请重新登录',
-            showCancel: false
-          }).then(() => {
-            const app = getApp();
-            app.clearAuthState();
-            wx.reLaunch({ url: '/pages/login/login' });
-          })
+        const authResponse = classifyAuthResponse(statusCode, skipAuthCheck)
+        if (authResponse.type === 'auth-expired' && withAuth) {
+          handleAuthExpired()
           reject({ code: 401, msg: '请提供有效的token' })
           return
         }
 
-        if (classifyAuthResponse(statusCode, skipAuthCheck).type === 'device-required') {
+        if (authResponse.type === 'device-required') {
           reject({ code: 403, msg: '请先绑定设备' })
+          return
+        }
+
+        if (statusCode < 200 || statusCode >= 300) {
+          const message = (data && (data.msg || data.message)) || `服务异常（${statusCode}）`
+          wx.toast({ title: message, icon: 'none' })
+          reject({ code: statusCode, msg: message, data })
           return
         }
 
@@ -82,11 +99,13 @@ function request({ url, method = 'GET', data = {}, header = {}, skipAuthCheck = 
         reject(data)
       },
       fail(err) {
+        const isTimeout = err && err.errMsg && err.errMsg.includes('timeout')
+        const message = isTimeout ? '请求超时，请重试' : '网络连接失败，请检查网络'
         wx.toast({
-          title: '网络异常，请重试',
-          icon: 'error'
+          title: message,
+          icon: 'none'
         })
-        reject(err)
+        reject({ ...err, code: -1, msg: message })
       }
     })
   })
@@ -99,6 +118,9 @@ export default {
   },
   post(url, data, header, skipAuthCheck = false) {
     return request({ url, method: 'POST', data, header, skipAuthCheck })
+  },
+  publicPost(url, data, header) {
+    return request({ url, method: 'POST', data, header, withAuth: false })
   },
   delete(url, data, header) {
     return request({ url, method: 'DELETE', data, header })

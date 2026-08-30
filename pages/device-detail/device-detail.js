@@ -39,10 +39,15 @@ Page({
   },
 
   onShow() {
-    // 从子页面返回时刷新数据（如设置页修改了设备名）
+    // 从子页面返回时刷新数据（如设置页修改了设备名）。
     if (this.data.device) {
       this.loadDeviceFromAPI();
     }
+  },
+
+  onUnload() {
+    // 使尚未返回的请求失效，避免卸载后继续 setData。
+    if (this.detailRequests) this.detailRequests.begin();
   },
 
   // 从后端API并行加载设备状态、位置和联系人。
@@ -53,11 +58,26 @@ Page({
     const app = getApp();
     const authToken = app.getDeviceAccessToken(currentSn) || this.data.currentDeviceAccessToken;
 
-    this.setData({ isLoading: true });
-    const { device, markers } = await loadDeviceDetails(currentSn, authToken);
+    if (!currentSn || !authToken) {
+      this.setData({ isLoading: false });
+      wx.toast({ title: '设备凭证不可用', icon: 'none' });
+      return;
+    }
 
-    if (!this.detailRequests.isCurrent(requestVersion) || currentSn !== this.data.currentSn) return;
-    this.setData({ device, markers, isLoading: false });
+    this.setData({ isLoading: true });
+    try {
+      const { device, markers } = await loadDeviceDetails(currentSn, authToken);
+      if (!this.detailRequests.isCurrent(requestVersion) || currentSn !== this.data.currentSn) return;
+      this.setData({ device, markers });
+    } catch (err) {
+      if (!this.detailRequests.isCurrent(requestVersion)) return;
+      console.error('加载设备详情失败：', err);
+      wx.toast({ title: '设备详情加载失败', icon: 'none' });
+    } finally {
+      if (this.detailRequests.isCurrent(requestVersion)) {
+        this.setData({ isLoading: false });
+      }
+    }
   },
 
   editName() {
@@ -129,8 +149,8 @@ Page({
 
     try {
       wx.showLoading({ title: '添加中...', mask: true });
-      const authToken = this.data.currentDeviceAccessToken;
-      
+      const authToken = getApp().getDeviceAccessToken(this.data.currentSn) || this.data.currentDeviceAccessToken;
+
       const res = await http.post(
         `/user/addPhoneNumber?number=${encodeURIComponent(tempContactPhone)}&name=${encodeURIComponent(tempContactName)}`,
         {},
@@ -173,7 +193,7 @@ Page({
 
     try {
       wx.showLoading({ title: '删除中...', mask: true });
-      const authToken = this.data.currentDeviceAccessToken;
+      const authToken = getApp().getDeviceAccessToken(this.data.currentSn) || this.data.currentDeviceAccessToken;
 
       const delRes = await http.delete(`/user/deletePhone?number=${encodeURIComponent(contact.phone)}`, {}, {
         Authorization: `Bearer ${authToken}`
@@ -191,27 +211,32 @@ Page({
     }
   },
 
-  async confirmUnbind() {
+  async confirmRemoveDevice() {
     const confirmed = await wx.modal({
-      title: '解除绑定',
-      content: '确定要解除该设备的绑定吗？'
+      title: '从本机移除',
+      content: '仅清除本机保存的设备信息，不会解除服务端绑定。'
     });
-    if (confirmed) {
-      // TODO: 后端暂无解绑接口，仅做前端提示
-      wx.toast({ title: '已解除绑定', icon: 'success' });
-      setTimeout(() => {
-        wx.navigateBack();
-      }, 1500);
+    if (!confirmed) return;
+
+    const removed = getApp().removeLocalDevice(this.data.currentSn);
+    if (!removed) {
+      wx.toast({ title: '设备已不在本机列表中', icon: 'none' });
+      return;
     }
+
+    wx.toast({ title: '已从本机移除', icon: 'success' });
+    setTimeout(() => {
+      wx.reLaunch({ url: '/pages/home/home' });
+    }, 800);
   },
 
   startNavigation() {
     const { device } = this.data;
-    const latitude = device.latitude || 39.9042;
-    const longitude = device.longitude || 116.4074;
+    const latitude = device && Number(device.latitude);
+    const longitude = device && Number(device.longitude);
 
-    if (latitude === 0 || longitude === 0 || !latitude || !longitude) {
-      return wx.toast({ title: '坐标异常', icon: 'none' });
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude === 0 || longitude === 0) {
+      return wx.toast({ title: '位置数据不可用', icon: 'none' });
     }
 
     wx.openLocation({

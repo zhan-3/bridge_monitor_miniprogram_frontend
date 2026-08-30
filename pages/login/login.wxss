@@ -16,8 +16,15 @@
 }
 
 .logo-icon {
-  font-size: 72px;
-  margin-bottom: 16px;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 20px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(140, 57, 0, 0.18);
 }
 
 .title {

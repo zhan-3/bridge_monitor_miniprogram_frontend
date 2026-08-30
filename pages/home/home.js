@@ -20,18 +20,33 @@ Page({
   },
 
   onShow() {
+    this.isPageVisible = true;
     const isLogin = getStorage('isLogin');
     const token = getApp().getLoginToken();
 
     if (!isLogin || !token) {
-      this.setData({ isLogin: false, userInfo: {}, pageLoading: false });
+      this.setData({
+        isLogin: false,
+        hasPhone: false,
+        userInfo: {},
+        devices: [],
+        currentSn: '',
+        pageLoading: false
+      });
       return
     }
 
     const userInfo = getStorage('userInfo') || {};
 
     if (!userInfo.phone) {
-      this.setData({ isLogin: true, userInfo, pageLoading: false });
+      this.setData({
+        isLogin: true,
+        hasPhone: false,
+        userInfo,
+        devices: [],
+        currentSn: '',
+        pageLoading: false
+      });
       wx.showModal({
         title: '请绑定手机号',
         content: '绑定手机号后才能正常使用报警服务',
@@ -69,11 +84,13 @@ Page({
   },
 
   onHide() {
+    this.isPageVisible = false;
     clearInterval(this.pollTimer);
     this.pollTimer = null;
   },
 
   onUnload() {
+    this.isPageVisible = false;
     clearInterval(this.pollTimer);
     this.pollTimer = null;
   },
@@ -89,14 +106,14 @@ Page({
           phone: res.data.phone || cached.phone || ''
         };
         setStorage('userInfo', userInfo);
-        this.setData({ userInfo });
+        if (this.isPageVisible) this.setData({ userInfo });
         return;
       }
     } catch (err) {
       console.error('获取用户信息失败：', err);
     }
     const userInfo = getStorage('userInfo') || {};
-    this.setData({ userInfo });
+    if (this.isPageVisible) this.setData({ userInfo });
   },
 
   // 遍历所有已绑定设备的token，构建设备列表（并行请求）
@@ -131,7 +148,14 @@ Page({
             return null;
           }).catch(err => {
             console.error('获取设备状态失败：', device.sn, err);
-            return null;
+            const displayName = (device.name && device.name !== device.sn) ? device.name : device.sn;
+            return {
+              id: device.sn,
+              sn: device.sn,
+              name: displayName,
+              status: 'unknown',
+              statusText: '连接失败'
+            };
           })
         )
       );
@@ -140,7 +164,8 @@ Page({
         .map(r => r.status === 'fulfilled' ? r.value : null)
         .filter(Boolean);
 
-      // 仅在数据有变化时才 setData，避免无意义的渲染
+      // 页面已隐藏时丢弃迟到结果；数据未变化时避免无意义渲染。
+      if (!this.isPageVisible) return;
       if (JSON.stringify(devices) !== JSON.stringify(this.data.devices)) {
         this.setData({ devices });
       }

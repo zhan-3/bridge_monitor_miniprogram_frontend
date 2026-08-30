@@ -2,6 +2,14 @@ import http from '../../utils/http';
 import { getStorage, setStorage } from '../../utils/storage';
 import { isValidSN } from '../../utils/validators';
 
+function safeDecode(value) {
+  try {
+    return decodeURIComponent(value || '');
+  } catch (err) {
+    return '';
+  }
+}
+
 Page({
   data: {
     showManualBind: false,
@@ -12,29 +20,32 @@ Page({
     isLogin: false
   },
 
-  onLoad(options) {
+  async onLoad(options = {}) {
     let deviceSN = '';
 
     if (options.scene) {
       // 从小程序码扫码进入（scene参数）
-      deviceSN = decodeURIComponent(options.scene);
+      deviceSN = safeDecode(options.scene).trim().toUpperCase();
     } else if (options.sn) {
       // 从登录页跳转回来（sn参数）
-      deviceSN = decodeURIComponent(options.sn);
+      deviceSN = safeDecode(options.sn).trim().toUpperCase();
+    }
+
+    if (deviceSN && !isValidSN(deviceSN)) {
+      wx.toast({ title: '设备SN码格式错误', icon: 'none' });
+      deviceSN = '';
     }
 
     if (deviceSN) {
       this.setData({ deviceSN });
-      // 在可能跳转登录前先保存SN，防止页面跳转后丢失
+      // 在可能跳转登录前先保存SN，防止页面跳转后丢失。
       getApp().globalData.pendingSN = deviceSN;
     }
 
-    // 校验用户登录态
-    this.checkLoginStatus();
-
-    // 已登录且有SN码时自动触发绑定流程
-    if (this.data.isLogin && deviceSN) {
-      this.autoBindDevice(deviceSN);
+    // 校验用户登录态后再决定是否自动绑定，避免异步状态竞争。
+    const isLogin = await this.checkLoginStatus();
+    if (isLogin && deviceSN) {
+      await this.autoBindDevice(deviceSN);
     }
   },
 
@@ -43,9 +54,11 @@ Page({
    */
   async checkLoginStatus() {
     const cacheIsLogin = getStorage('isLogin', false);
+    const loginToken = getApp().getLoginToken();
 
-    if (cacheIsLogin) {
+    if (cacheIsLogin && loginToken) {
       this.setData({ isLogin: true });
+      return true;
     } else {
       setStorage('isLogin', false);
       this.setData({ isLogin: false });
@@ -60,6 +73,7 @@ Page({
       wx.redirectTo({
         url: `/pages/login/login?redirect=${encodeURIComponent(redirectUrl)}`
       });
+      return false;
     }
   },
 
@@ -72,14 +86,21 @@ Page({
       onlyFromCamera: true,
       scanType: ['qrCode'],
       success: (res) => {
-        let sn = res.result;
-        // 兼容小程序码scene参数格式（scene=XXX）
-        if (sn.includes('scene=')) {
-          sn = decodeURIComponent(sn.split('=')[1]);
+        let sn = (res.result || '').trim().toUpperCase();
+        // 兼容小程序码 scene 参数格式。
+        if (sn.includes('SCENE=')) {
+          sn = safeDecode(sn.split('SCENE=')[1].split('&')[0]).trim().toUpperCase();
         }
-        sn ? this.bindDevice(sn) : wx.toast({ title: '未识别到设备SN', icon: 'none' });
+        if (!isValidSN(sn)) {
+          wx.toast({ title: '二维码中未识别到有效SN码', icon: 'none' });
+          return;
+        }
+        this.bindDevice(sn);
       },
-      fail: () => wx.toast({ title: '扫码已取消', icon: 'none' })
+      fail: (err) => {
+        if (err && err.errMsg && err.errMsg.includes('cancel')) return;
+        wx.toast({ title: '扫码失败，请重试', icon: 'none' });
+      }
     });
   },
 
@@ -90,7 +111,8 @@ Page({
     if (!this.data.isLogin) return;
     this.setData({
       showManualBind: true,
-      inputSN: ''
+      inputSN: '',
+      snError: false
     });
   },
 
@@ -98,6 +120,7 @@ Page({
    * 关闭手动绑定弹窗
    */
   async closeManualBind() {
+    if (this.data.isLoading) return;
     const { inputSN } = this.data;
     if (inputSN) {
       const confirmed = await wx.modal({
@@ -145,8 +168,8 @@ Page({
       confirmText: '确认绑定'
     });
     if (confirmed) {
-      this.bindDevice(inputSN);
-      this.setData({ showManualBind: false, inputSN: '' });
+      const bound = await this.bindDevice(inputSN);
+      if (bound) this.setData({ showManualBind: false, inputSN: '', snError: false });
     }
   },
 
@@ -161,7 +184,7 @@ Page({
       confirmText: '确认绑定'
     });
     if (confirmed) {
-      this.bindDevice(sn);
+      await this.bindDevice(sn);
     }
   },
 
@@ -169,8 +192,13 @@ Page({
    * 核心绑定逻辑（统一处理扫码/手动/自动绑定）
    */
   async bindDevice(sn) {
-    if (this.data.isLoading || !sn) return;
+    const normalizedSN = String(sn || '').trim().toUpperCase();
+    if (this.data.isLoading || !isValidSN(normalizedSN)) {
+      if (!this.data.isLoading) wx.toast({ title: '设备SN码格式错误', icon: 'none' });
+      return false;
+    }
     this.setData({ isLoading: true });
+    let succeeded = false;
 
     try {
       wx.showLoading({ title: '绑定设备中...', mask: true });
@@ -178,17 +206,17 @@ Page({
       const loginToken = getApp().getLoginToken();
 
       // deviceSn 通过 URL 查询参数传递
-      let bindRes = await http.post(`/user/bind/device?deviceSn=${encodeURIComponent(sn)}&deviceId=${encodeURIComponent(sn)}`, {
-        deviceSn: sn,
-        deviceId: sn
+      let bindRes = await http.post(`/user/bind/device?deviceSn=${encodeURIComponent(normalizedSN)}&deviceId=${encodeURIComponent(normalizedSN)}`, {
+        deviceSn: normalizedSN,
+        deviceId: normalizedSN
       }, {
         Authorization: `Bearer ${loginToken}`
       }, true);
 
       if (bindRes.code === 1 && bindRes.data === '绑定成功') {
-        bindRes = await http.post(`/user/bind/userDeviceLogin?deviceSn=${encodeURIComponent(sn)}&deviceId=${encodeURIComponent(sn)}`, {
-          deviceSn: sn,
-          deviceId: sn
+        bindRes = await http.post(`/user/bind/userDeviceLogin?deviceSn=${encodeURIComponent(normalizedSN)}&deviceId=${encodeURIComponent(normalizedSN)}`, {
+          deviceSn: normalizedSN,
+          deviceId: normalizedSN
         }, {
           Authorization: `Bearer ${loginToken}`
         }, true);
@@ -196,7 +224,9 @@ Page({
 
       if (bindRes.code === 1 && bindRes.data && typeof bindRes.data === 'string' && !/[\u4e00-\u9fa5]/.test(bindRes.data)) {
         const app = getApp();
-        app.bindDevice(sn, bindRes.data, sn);
+        app.bindDevice(normalizedSN, bindRes.data, normalizedSN);
+        app.globalData.pendingSN = '';
+        succeeded = true;
 
         wx.toast({ title: '绑定成功', icon: 'success' });
         setTimeout(() => {
@@ -215,6 +245,7 @@ Page({
       this.setData({ isLoading: false });
       wx.hideLoading();
     }
+    return succeeded;
   },
 
 });

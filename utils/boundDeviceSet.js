@@ -84,6 +84,15 @@ function createBoundDeviceSet(storage) {
     return true;
   }
 
+  function remove(sn) {
+    const index = devices.findIndex(item => item.sn === sn);
+    if (index < 0) return false;
+    devices.splice(index, 1);
+    if (selectedSn === sn) selectedSn = devices[0] ? devices[0].sn : '';
+    persist();
+    return true;
+  }
+
   function clear() {
     devices = [];
     selectedSn = '';
@@ -100,6 +109,7 @@ function createBoundDeviceSet(storage) {
     select,
     bind,
     rename,
+    remove,
     clear,
     restore
   });

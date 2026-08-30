@@ -7,6 +7,9 @@
     "pages/audio/audio",
     "pages/devicebinding/devicebinding"
   ],
+  "usingComponents": {
+    "app-icon": "/components/app-icon/app-icon"
+  },
   "window": {
     "backgroundTextStyle": "dark",
     "navigationBarBackgroundColor": "#FF7A00",

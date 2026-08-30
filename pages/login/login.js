@@ -2,6 +2,7 @@
 import http from '../../utils/http'
 import { getStorage, setStorage } from '../../utils/storage'
 import { isValidPhone } from '../../utils/validators'
+const { resolvePostLoginUrl } = require('../../utils/navigation')
 
 Page({
   data: {
@@ -9,17 +10,27 @@ Page({
     loading: false,
     phone: '',
     phoneError: false,
-    errMsg: ''
+    errMsg: '',
+    postLoginUrl: '/pages/home/home'
   },
 
-  onLoad() {
-    // 已有登录凭证且有手机号，直接进首页
-    const token = getApp().getLoginToken()
+  onLoad(options = {}) {
+    const app = getApp()
+    const postLoginUrl = resolvePostLoginUrl(options.redirect, app.globalData.pendingSN)
+    this.setData({ postLoginUrl })
+
+    // 已有登录凭证且有手机号，直接进入原目标页面。
+    const token = app.getLoginToken()
     const isLogin = getStorage('isLogin')
     const userInfo = getStorage('userInfo') || {}
     if (token && isLogin && userInfo.phone) {
-      wx.reLaunch({ url: '/pages/home/home' })
+      this.finishLogin()
     }
+  },
+
+  finishLogin() {
+    const url = this.data.postLoginUrl || '/pages/home/home'
+    wx.reLaunch({ url })
   },
 
   async doLogin() {
@@ -35,7 +46,7 @@ Page({
         return
       }
 
-      const res = await http.post('/system/log', { code: loginRes.code })
+      const res = await http.publicPost('/system/log', { code: loginRes.code })
       if (res.code !== 1 || !res.data) {
         this.setData({ loading: false, errMsg: res.msg || '登录失败' })
         return
@@ -49,7 +60,7 @@ Page({
       // 检查是否已有手机号
       const userInfo = getStorage('userInfo') || {}
       if (userInfo.phone) {
-        wx.reLaunch({ url: '/pages/home/home' })
+        this.finishLogin()
         return
       }
 
@@ -62,7 +73,11 @@ Page({
 
   onPhoneInput(e) {
     const phone = e.detail.value
-    this.setData({ phone, phoneError: phone.length > 0 && !isValidPhone(phone) })
+    this.setData({
+      phone,
+      phoneError: phone.length > 0 && !isValidPhone(phone),
+      errMsg: ''
+    })
   },
 
   async confirmPhone() {
@@ -75,26 +90,21 @@ Page({
       return
     }
 
-    this.setData({ loading: true })
+    this.setData({ loading: true, errMsg: '' })
 
     const token = getApp().getLoginToken()
-
-    // 超时保护：8 秒后自动解锁，防止请求卡死
-    const timeoutId = setTimeout(() => {
-      this.setData({ loading: false })
-      wx.toast({ title: '请求超时，请检查服务端是否启动', icon: 'none' })
-    }, 8000)
+    if (!token) {
+      this.setData({ loading: false, errMsg: '登录状态已失效，请重新登录' })
+      return
+    }
 
     try {
-      const res = await http.post('/user/userBindPhone?phone=' + phone, {}, {
+      const res = await http.post('/user/userBindPhone?phone=' + encodeURIComponent(phone), {}, {
         Authorization: `Bearer ${token}`
       }, true)
 
-      clearTimeout(timeoutId)
-
       if (res.code !== 1) {
-        this.setData({ loading: false })
-        wx.toast({ title: res.msg || '保存失败', icon: 'none' })
+        this.setData({ errMsg: res.msg || '手机号保存失败，请重试' })
         return
       }
 
@@ -103,12 +113,12 @@ Page({
       setStorage('userInfo', userInfo)
       setStorage('phone', phone)
 
-      wx.reLaunch({ url: '/pages/home/home' })
+      this.finishLogin()
     } catch (err) {
-      clearTimeout(timeoutId)
       console.error('[login] confirmPhone 异常:', err)
+      this.setData({ errMsg: err.msg || '网络异常，请重试' })
+    } finally {
       this.setData({ loading: false })
-      wx.toast({ title: '网络异常，请重试', icon: 'none' })
     }
   }
 })

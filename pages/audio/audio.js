@@ -1,5 +1,6 @@
 import { setStorage, getStorage } from '../../utils/storage'
 import http from '../../utils/http'
+const { normalizeCollectIds, filterAndSortAudio, findAudioById } = require('../../utils/audioState')
 
 Page({
   data: {
@@ -31,13 +32,24 @@ Page({
   timer: null,
   loadTimeoutTimer: null,
 
-  onLoad(options) {
+  onLoad() {
     this.initAudioManager();
     this.initWaveform();
     setTimeout(() => {
       this.data.audioManager && this.setupAudioListeners();
     }, 50);
+  },
+
+  onShow() {
     this.startPollingRealData();
+  },
+
+  onHide() {
+    this.stopPolling();
+    this.clearProgressTimer();
+    if (this.data.audioManager && this.data.isPlaying) {
+      this.data.audioManager.pause();
+    }
   },
 
   initWaveform() {
@@ -49,8 +61,7 @@ Page({
   },
 
   onUnload() {
-    // 保留所有定时器清除逻辑
-    this.timer && clearInterval(this.timer);
+    this.stopPolling();
     this.clearProgressTimer();
     this.loadTimeoutTimer && clearTimeout(this.loadTimeoutTimer);
     // 销毁音频管理器
@@ -126,8 +137,7 @@ Page({
 
   // ========== 完全保留你原有的数据处理/接口逻辑 ==========
   initCollectStatus(list) {
-    let collectIds = getStorage('collectIds') || [];
-    try { collectIds = JSON.parse(collectIds); } catch(e) { collectIds = []; }
+    const collectIds = normalizeCollectIds(getStorage('collectIds', []));
     return list.map(item => ({
       ...item,
       isCollect: collectIds.includes(item.id)
@@ -140,7 +150,14 @@ Page({
     this.timer = setInterval(() => this.getAllDeviceRecord(), 15000);
   },
 
-getAllDeviceRecord() {
+  stopPolling() {
+    if (this.timer) clearInterval(this.timer);
+    this.timer = null;
+  },
+
+  getAllDeviceRecord() {
+    if (this.isLoadingRecords) return;
+    this.isLoadingRecords = true;
     const deviceAccessToken = getApp().getDeviceAccessToken();
     http.get("/user/getRecord", {}, deviceAccessToken ? {
       Authorization: `Bearer ${deviceAccessToken}`
@@ -152,7 +169,9 @@ getAllDeviceRecord() {
           return;
         }
         
-        const audioUrlList = res.data || [];
+        const hiddenRecordUrls = normalizeCollectIds(getStorage('hiddenRecordUrls', []));
+        const audioUrlList = (Array.isArray(res.data) ? res.data : [])
+          .filter(url => url && !hiddenRecordUrls.includes(url));
         if (!audioUrlList.length) {
           this.setData({ audioList: [], filteredList: [] });
           return;
@@ -194,7 +213,10 @@ getAllDeviceRecord() {
         this.updateFilteredList();
       })
       .catch(err => {
-        console.error('❌ 网络请求失败：', err.errMsg);
+        console.error('[audio] 网络请求失败：', err && (err.errMsg || err.msg || err));
+      })
+      .finally(() => {
+        this.isLoadingRecords = false;
       });
   },
 
@@ -225,18 +247,14 @@ getAllDeviceRecord() {
   },
 
   updateFilteredList(srcList) {
-    let list = (srcList || this.data.audioList).filter(item => {
-      const ft = this.data.filterType;
-      return ft === 'all' || (ft === 'collected' && item.isCollect) || (ft === 'emergency' && item.status === 'emergency');
-    });
-
-    const sign = this.data.sortType === 'desc' ? -1 : 1;
-    list.sort((a, b) => (a.sortTime - b.sortTime) * sign);
-    list.forEach((item, i) => item.index = i);
-
-    const old = JSON.stringify(this.data.filteredList);
-    const neu = JSON.stringify(list);
-    if (old !== neu) this.setData({ filteredList: list });
+    const list = filterAndSortAudio(
+      srcList || this.data.audioList,
+      this.data.filterType,
+      this.data.sortType
+    );
+    if (JSON.stringify(this.data.filteredList) !== JSON.stringify(list)) {
+      this.setData({ filteredList: list });
+    }
   },
 
   toggleSort() {
@@ -272,8 +290,8 @@ getAllDeviceRecord() {
   },
 
   playSelected() {
-    if (this.data.selectedIndex >= 0) {
-      this.selectAudio({ currentTarget: { dataset: { index: this.data.selectedIndex } } });
+    if (this.data.selectedItem) {
+      this.selectAudio({ currentTarget: { dataset: { id: this.data.selectedItem.id } } });
     }
     this.hideActionMenu();
   },
@@ -286,7 +304,7 @@ getAllDeviceRecord() {
     // 错误监听
     audioManager.on('error', (err) => {
       err = err || {};
-      console.error('❌ 音频错误：', err);
+      console.error('[audio] 播放错误：', err);
       const errMsgMap = {
         10001: '系统错误（音频服务异常）',
         10002: '网络错误（音频地址无法访问）',
@@ -353,9 +371,10 @@ getAllDeviceRecord() {
 
   // ========== 适配：选择音频（替换原生src为NPM包load） ==========
   selectAudio(e) {
-    const index = e.currentTarget.dataset.index;
-    const audio = this.data.audioList[index];
+    const audioId = e.currentTarget.dataset.id;
+    const audio = findAudioById(this.data.audioList, audioId);
     if (!audio) return;
+    const index = this.data.audioList.findIndex(item => item.id === audioId);
 
     // 保留你原有的重置逻辑
     if (this.data.audioManager) {
@@ -436,7 +455,7 @@ getAllDeviceRecord() {
           });
           this.startProgressTimer();
         } catch (err) {
-          console.error('❌ 播放触发失败：', err);
+          console.error('[audio] 播放触发失败：', err);
           wx.toast({ title: '播放失败，请点击重试', icon: 'none' });
         }
       };
@@ -473,8 +492,8 @@ getAllDeviceRecord() {
       item => item.id === this.data.currentAudio.id
     );
     if (currentIndex > 0) {
-      this.selectAudio({ 
-        currentTarget: { dataset: { index: currentIndex - 1 } } 
+      this.selectAudio({
+        currentTarget: { dataset: { id: this.data.audioList[currentIndex - 1].id } }
       });
     }
   },
@@ -485,8 +504,8 @@ getAllDeviceRecord() {
       item => item.id === this.data.currentAudio.id
     );
     if (currentIndex < this.data.audioList.length - 1) {
-      this.selectAudio({ 
-        currentTarget: { dataset: { index: currentIndex + 1 } } 
+      this.selectAudio({
+        currentTarget: { dataset: { id: this.data.audioList[currentIndex + 1].id } }
       });
     }
   },
@@ -579,16 +598,15 @@ getAllDeviceRecord() {
     );
     const isCollect = list[index].isCollect;
 
-    let collectIds = getStorage('collectIds');
-    try { collectIds = JSON.parse(collectIds || '[]'); } catch(e) { collectIds = []; }
+    let collectIds = normalizeCollectIds(getStorage('collectIds', []));
 
     if (isCollect) {
-      collectIds.push(currentId);
+      collectIds = [...new Set([...collectIds, currentId])];
     } else {
       collectIds = collectIds.filter(id => id !== currentId);
     }
 
-    setStorage('collectIds', JSON.stringify(collectIds));
+    setStorage('collectIds', collectIds);
     this.setData({ audioList: list });
     this.updateFilteredList(list);
     wx.toast({ title: isCollect ? '已收藏' : '已取消', icon: 'none' });
@@ -609,21 +627,20 @@ getAllDeviceRecord() {
     if (index === -1 || !currentId) return;
 
     const currentCollect = this.data.audioList[index].isCollect;
-    let collectIds = getStorage('collectIds');
-    try { collectIds = JSON.parse(collectIds || '[]'); } catch(e) { collectIds = []; }
+    let collectIds = normalizeCollectIds(getStorage('collectIds', []));
     const newList = this.data.audioList.map((item, i) =>
       i === index ? { ...item, isCollect: !currentCollect } : item
     );
 
     if (!currentCollect) {
-      collectIds.push(currentId);
+      collectIds = [...new Set([...collectIds, currentId])];
       wx.toast({ title: '收藏成功', icon: 'success' });
     } else {
       collectIds = collectIds.filter(id => id !== currentId);
       wx.toast({ title: '已取消', icon: 'none' });
     }
 
-    setStorage('collectIds', JSON.stringify(collectIds));
+    setStorage('collectIds', collectIds);
     this.setData({ audioList: newList });
     this.updateFilteredList(newList);
     if (this.data.selectedItem) {
@@ -642,25 +659,38 @@ getAllDeviceRecord() {
 
     const { audioList, currentAudio } = this.data;
     const index = audioList.findIndex(item => item.id === currentId);
+    const target = audioList[index];
 
-    if (index === -1 || !currentId) return wx.toast({ title: '数据不存在' });
+    if (index === -1 || !currentId || !target) return wx.toast({ title: '数据不存在' });
 
     this.hideActionMenu();
-    const confirmed = await wx.modal({ title: '确认删除', content: '是否删除该录音？' });
+    const confirmed = await wx.modal({
+      title: '从列表移除',
+      content: '移除后此设备上的录音将不再显示。'
+    });
     if (confirmed) {
       const newList = audioList.filter(item => item.id !== currentId);
-      let collectIds = getStorage('collectIds') || [];
-      collectIds = collectIds.filter(id => id !== currentId);
+      const collectIds = normalizeCollectIds(getStorage('collectIds', []))
+        .filter(id => id !== currentId);
+      const hiddenRecordUrls = normalizeCollectIds(getStorage('hiddenRecordUrls', []));
       setStorage('collectIds', collectIds);
+      setStorage('hiddenRecordUrls', [...new Set([...hiddenRecordUrls, target.url])]);
 
-      const newCurrentAudio = currentAudio?.id === currentId ? (newList[0] || null) : currentAudio;
+      const removedCurrent = currentAudio && currentAudio.id === currentId;
+      if (removedCurrent && this.data.audioManager) {
+        this.data.audioManager.stop();
+        this.clearProgressTimer();
+      }
 
       this.setData({
         audioList: newList,
-        currentAudio: newCurrentAudio
+        currentAudio: removedCurrent ? null : currentAudio,
+        currentPlayId: removedCurrent ? '' : this.data.currentPlayId,
+        isPlaying: removedCurrent ? false : this.data.isPlaying,
+        playState: removedCurrent ? 'pause' : this.data.playState
       });
-      this.updateFilteredList();
-      wx.toast({ title: '删除成功', icon: 'success' });
+      this.updateFilteredList(newList);
+      wx.toast({ title: '已从列表移除', icon: 'success' });
     }
   }
 });

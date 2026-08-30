@@ -231,6 +231,7 @@
   min-height: 28px;
   box-sizing: border-box;
   border: 1px solid #eee;
+  gap: 5px;
 }
 
 .audio-list {
@@ -261,8 +262,14 @@
 }
 
 .audio-icon {
-  font-size: 24px;
+  width: 36px;
+  height: 36px;
   margin-right: 12px;
+  border-radius: 10px;
+  background: #fff3e8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
@@ -318,12 +325,15 @@
 }
 
 .collect-icon {
-  font-size: 16px;
-  color: #ddd;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.collect-icon.active {
-  color: #FFD700;
+.collect-icon:active {
+  transform: scale(0.92);
 }
 
 /* 空状态 */
@@ -335,7 +345,6 @@
 }
 
 .empty-icon {
-  font-size: 48px;
   margin-bottom: 16px;
 }
 
@@ -402,8 +411,10 @@
 }
 
 .action-icon {
-  font-size: 20px;
+  width: 24px;
   margin-right: 12px;
+  display: flex;
+  justify-content: center;
 }
 
 .action-text {

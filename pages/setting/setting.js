@@ -2,6 +2,7 @@ import { loadDeviceData, buildMarkers } from '../../utils/deviceService';
 import http from '../../utils/http';
 import { getStorage, setStorage } from '../../utils/storage';
 import { isValidPhone } from '../../utils/validators';
+const { normalizeSettingIndex } = require('../../utils/localSettings');
 
 Page({
   data: {
@@ -19,6 +20,8 @@ Page({
     disconnectWarn: true,
     isDeviceSetting: false,
     isSaving: false,
+    isBindingPhone: false,
+    phoneErrorMessage: '',
     device: null,
     markers: [],
     showEditNameModal: false,
@@ -39,6 +42,11 @@ Page({
     this.setData({ userInfo });
   },
 
+  onUnload() {
+    if (this.profileSaveTimer) clearTimeout(this.profileSaveTimer);
+    if (this.navigateTimer) clearTimeout(this.navigateTimer);
+  },
+
   onChooseAvatar(e) {
     const avatarUrl = e.detail.avatarUrl;
     if (!avatarUrl) return;
@@ -50,11 +58,15 @@ Page({
 
   onNicknameInput(e) {
     const nickName = e.detail.value;
-    if (!nickName) return;
     const userInfo = { ...this.data.userInfo, nickName };
     setStorage('userInfo', userInfo);
     this.setData({ userInfo });
-    this.saveUserProfile({ nickName });
+
+    if (this.profileSaveTimer) clearTimeout(this.profileSaveTimer);
+    this.profileSaveTimer = setTimeout(() => {
+      this.saveUserProfile({ nickName: nickName.trim() });
+      this.profileSaveTimer = null;
+    }, 500);
   },
 
   async saveUserProfile(fields) {
@@ -82,8 +94,8 @@ Page({
       // 向后兼容：从旧版独立 key 迁移
       settings = {
         autoRecord: wx.getStorageSync('autoRecord'),
-        qualityIndex: wx.getStorageSync('recordQualityIndex') || 1,
-        dayIndex: wx.getStorageSync('recordSaveDayIndex') || 1,
+        qualityIndex: normalizeSettingIndex(wx.getStorageSync('recordQualityIndex'), 1, 2),
+        dayIndex: normalizeSettingIndex(wx.getStorageSync('recordSaveDayIndex'), 1, 3),
         alarmPush: wx.getStorageSync('alarmPush'),
         alarmSound: wx.getStorageSync('alarmSound'),
         disconnectWarn: wx.getStorageSync('disconnectWarn')
@@ -93,8 +105,8 @@ Page({
 
     this.setData({
       autoRecord: settings.autoRecord !== false,
-      qualityIndex: settings.qualityIndex || 1,
-      dayIndex: settings.dayIndex || 1,
+      qualityIndex: normalizeSettingIndex(settings.qualityIndex, 1, 2),
+      dayIndex: normalizeSettingIndex(settings.dayIndex, 1, 3),
       alarmPush: settings.alarmPush !== false,
       alarmSound: settings.alarmSound !== false,
       disconnectWarn: settings.disconnectWarn !== false
@@ -106,11 +118,11 @@ Page({
   },
 
   changeRecordQuality(e) {
-    this.setData({ qualityIndex: e.detail.value });
+    this.setData({ qualityIndex: normalizeSettingIndex(e.detail.value, 1, 2) });
   },
 
   changeSaveDay(e) {
-    this.setData({ dayIndex: e.detail.value });
+    this.setData({ dayIndex: normalizeSettingIndex(e.detail.value, 1, 3) });
   },
 
   switchAlarmPush(e) {
@@ -126,48 +138,47 @@ Page({
   },
 
   showPhoneModal() {
-    this.setData({ showPhoneModal: true, phone: '', phoneError: false });
+    this.setData({ showPhoneModal: true, phone: '', phoneError: false, phoneErrorMessage: '' });
   },
 
   hidePhoneModal() {
-    this.setData({ showPhoneModal: false, phone: '', phoneError: false });
+    if (this.data.isBindingPhone) return;
+    this.setData({ showPhoneModal: false, phone: '', phoneError: false, phoneErrorMessage: '' });
   },
 
   onPhoneInput(e) {
     const phone = e.detail.value;
-    this.setData({ phone, phoneError: phone.length > 0 && !isValidPhone(phone) });
+    const phoneError = phone.length > 0 && !isValidPhone(phone);
+    this.setData({
+      phone,
+      phoneError,
+      phoneErrorMessage: phoneError ? '请输入正确的11位手机号' : ''
+    });
   },
 
   async confirmPhone() {
-    const { phone } = this.data;
+    const { phone, isBindingPhone } = this.data;
+    if (isBindingPhone) return;
     if (!isValidPhone(phone)) {
-      wx.toast({ title: '请输入正确的手机号', icon: 'none' });
-      this.setData({ phoneError: true });
+      this.setData({ phoneError: true, phoneErrorMessage: '请输入正确的11位手机号' });
       return;
     }
 
     const token = getApp().getLoginToken();
     if (!token) {
-      wx.toast({ title: '请先完成登录', icon: 'error' });
+      this.setData({ phoneError: true, phoneErrorMessage: '登录状态已失效，请重新登录' });
       return;
     }
 
-    // 超时保护：8 秒后自动隐藏 loading
+    this.setData({ isBindingPhone: true, phoneErrorMessage: '' });
     wx.showLoading({ title: '保存中...' });
-    const timeoutId = setTimeout(() => {
-      wx.hideLoading();
-      wx.toast({ title: '请求超时，请重试', icon: 'none' });
-    }, 8000);
 
     try {
-      const res = await http.post('/user/userBindPhone?phone=' + phone, {}, {
+      const res = await http.post('/user/userBindPhone?phone=' + encodeURIComponent(phone), {}, {
         Authorization: `Bearer ${token}`
       }, true);
-      clearTimeout(timeoutId);
-      wx.hideLoading();
-
       if (res.code !== 1) {
-        wx.toast({ title: res.msg || '保存失败', icon: 'none' });
+        this.setData({ phoneError: true, phoneErrorMessage: res.msg || '手机号保存失败，请重试' });
         return;
       }
 
@@ -177,10 +188,11 @@ Page({
       this.setData({ userInfo, showPhoneModal: false });
       wx.toast({ title: '手机号绑定成功', icon: 'success' });
     } catch (err) {
-      clearTimeout(timeoutId);
-      wx.hideLoading();
       console.error('[setting] confirmPhone 异常:', err);
-      wx.toast({ title: '网络异常，请重试', icon: 'none' });
+      this.setData({ phoneError: true, phoneErrorMessage: err.msg || '网络异常，请重试' });
+    } finally {
+      wx.hideLoading();
+      this.setData({ isBindingPhone: false });
     }
   },
 
@@ -308,8 +320,9 @@ Page({
 
     wx.toast({ title: '保存成功', icon: 'success' });
 
-    setTimeout(() => {
+    this.navigateTimer = setTimeout(() => {
       wx.navigateBack();
-    }, 1500);
+      this.navigateTimer = null;
+    }, 800);
   }
 });

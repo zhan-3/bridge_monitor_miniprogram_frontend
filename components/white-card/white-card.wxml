@@ -1,6 +1,7 @@
 <view class="white-card-container {{customClass}}">
   <view class="card-header" wx:if="{{title || showRightContent}}">
-    <view class="header-left" style="flex: 1;">
+    <view class="header-left">
+      <app-icon wx:if="{{titleIcon}}" name="{{titleIcon}}" size="18" />
       <text class="header-title">{{title}}</text>
     </view>
     <view class="header-right" wx:if="{{showRightContent}}" style="display: flex; align-items: center;">

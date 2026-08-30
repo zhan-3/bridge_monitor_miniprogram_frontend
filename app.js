@@ -1,6 +1,7 @@
 // app.js
 import './utils/extendApi'
 import { setStorage, getStorage, removeStorage, clearStorage } from './utils/storage'
+import { isValidSN } from './utils/validators'
 
 const { createBoundDeviceSet } = require('./utils/boundDeviceSet')
 const { createLoginCredential } = require('./utils/loginCredential')
@@ -43,9 +44,15 @@ App({
     }
     this.syncBoundDeviceState()
 
-    if (options && options.scene) {
-      const sn = decodeURIComponent(options.scene)
-      if (sn) this.globalData.pendingSN = sn
+    // options.scene 是微信入口场景值；设备参数位于 options.query.scene。
+    const encodedSN = options && options.query && options.query.scene
+    if (encodedSN) {
+      try {
+        const sn = decodeURIComponent(encodedSN).trim().toUpperCase()
+        if (isValidSN(sn)) this.globalData.pendingSN = sn
+      } catch (err) {
+        console.warn('[app] 忽略无法解析的设备场景参数')
+      }
     }
   },
 
@@ -93,6 +100,12 @@ App({
     const renamed = this.boundDeviceSet.rename(sn, name)
     if (renamed) this.syncBoundDeviceState()
     return renamed
+  },
+
+  removeLocalDevice(sn) {
+    const removed = this.boundDeviceSet.remove(sn)
+    if (removed) this.syncBoundDeviceState()
+    return removed
   },
 
   clearAuthState() {

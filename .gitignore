@@ -15,3 +15,7 @@ node_modules/
 
 project.config.json
 project.private.config.json
+
+# Local runtime files
+.scratch/mock-server.log
+.scratch/mock-server.pid

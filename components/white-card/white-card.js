@@ -5,6 +5,7 @@ Component({
   },
   properties: {
     title: { type: String, value: '' },
+    titleIcon: { type: String, value: '' },
     footerText: { type: String, value: '' },
     footerSlot: { type: Boolean, value: false },
     customClass: { type: String, value: '' },

@@ -90,6 +90,18 @@ test('renamed devices keep their name after the app restores from storage', () =
   assert.equal(restoredSession.get('A').deviceAccessToken, 'access-A');
 });
 
+test('removing the selected local device selects the next available device', () => {
+  const storage = memoryStorage();
+  const devices = createBoundDeviceSet(storage);
+  devices.bind({ sn: 'A', deviceAccessToken: 'access-A' });
+  devices.bind({ sn: 'B', deviceAccessToken: 'access-B' });
+
+  assert.equal(devices.remove('B'), true);
+  assert.deepEqual(devices.list(), [{ sn: 'A', name: 'A', deviceAccessToken: 'access-A' }]);
+  assert.equal(devices.selectedDeviceSn(), 'A');
+  assert.equal(devices.remove('missing'), false);
+});
+
 test('login credential migrates from the legacy token key but new writes use loginToken', () => {
   const storage = memoryStorage({ token: 'login-user' });
   const login = createLoginCredential(storage);

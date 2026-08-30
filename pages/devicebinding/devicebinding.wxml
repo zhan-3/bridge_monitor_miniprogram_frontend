@@ -1,7 +1,7 @@
 <view class="container">
   <!-- 原有页面内容（不变） -->
   <view class="header-icon">
-    <text class="icon-text">📱</text>
+    <app-icon name="smartphone" size="40" label="绑定设备" />
   </view>
   <view class="header-title">绑定新设备</view>
   <view class="header-desc">将设备绑定到您的账户</view>
@@ -9,7 +9,7 @@
   <view class="bind-methods">
     <view class="method-card scan" bindtap="scanBindDevice">
       <view class="method-icon">
-        <text class="icon-text">⊕</text>
+        <app-icon name="scan-line-white" size="30" label="扫码绑定" />
       </view>
       <view class="method-title">扫码绑定</view>
       <view class="method-desc">扫描设备上的二维码</view>
@@ -17,7 +17,7 @@
 
     <view class="method-card manual" bindtap="openManualBind">
       <view class="method-icon">
-        <text class="icon-text">✎</text>
+        <app-icon name="pencil" size="28" label="手动输入" />
       </view>
       <view class="method-title">手动输入</view>
       <view class="method-desc">输入设备SN码绑定</view>
@@ -37,7 +37,9 @@
     <!-- 弹窗标题 -->
     <view class="modal-header">
       <view class="modal-title">输入设备SN码</view>
-      <view class="modal-close" bindtap="closeManualBind">✕</view>
+      <view class="modal-close" bindtap="closeManualBind" aria-label="关闭">
+        <app-icon name="x-gray" size="20" />
+      </view>
     </view>
     <!-- 输入框 -->
     <view class="modal-body">

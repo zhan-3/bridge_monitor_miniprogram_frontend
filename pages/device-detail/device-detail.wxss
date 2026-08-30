@@ -18,6 +18,17 @@
   height: 100%;
 }
 
+.map-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding-bottom: 84px;
+  background: #eef1f4;
+  color: #7a8490;
+  font-size: 13px;
+}
+
 .map-overlay {
   position: absolute;
   bottom: 0;
@@ -66,7 +77,8 @@
   color: var(--status-normal-color);
 }
 
-.alarm-badge.offline {
+.alarm-badge.offline,
+.alarm-badge.unknown {
   background: var(--status-offline-bg);
   color: var(--status-offline-color);
 }
@@ -204,11 +216,11 @@
   font-weight: bold;
   width: 28px;
   height: 28px;
-  line-height: 28px;
-  text-align: center;
   border-radius: 50%;
   background-color: var(--orange-light);
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   pointer-events: auto;
 }
 
@@ -279,8 +291,7 @@
 }
 
 .empty-icon {
-  font-size: 36px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .empty-text {

@@ -30,11 +30,6 @@
   margin-bottom: 16px;
 }
 
-.icon-text {
-  font-size: 40px;
-  color: var(--orange-primary);
-}
-
 .header-title {
   font-size: 22px;
   font-weight: 600;
@@ -87,16 +82,8 @@
   background: rgba(255, 255, 255, 0.25);
 }
 
-.method-card.scan .icon-text {
-  color: #fff;
-}
-
 .method-card.manual {
   background: #fff;
-}
-
-.method-card.manual .icon-text {
-  color: var(--orange-primary);
 }
 
 .method-icon {

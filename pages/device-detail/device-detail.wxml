@@ -8,14 +8,16 @@
   <block wx:else>
   <view class="map-section">
     <map
+      wx:if="{{device.latitude && device.longitude}}"
       id="deviceMap"
       class="device-map"
-      latitude="{{device.latitude || 39.9042}}"
-      longitude="{{device.longitude || 116.4074}}"
+      latitude="{{device.latitude}}"
+      longitude="{{device.longitude}}"
       scale="15"
       markers="{{markers}}"
       show-location
     ></map>
+    <view wx:else class="device-map map-empty">位置数据不可用</view>
     <view class="map-overlay">
       <view class="overlay-left">
         <view class="device-name-row">
@@ -23,11 +25,12 @@
           <view class="alarm-badge {{device.status}}">
             <text wx:if="{{device.status === 'alarm'}}">报警中</text>
             <text wx:elif="{{device.status === 'normal'}}">正常</text>
-            <text wx:else>离线</text>
+            <text wx:elif="{{device.status === 'offline'}}">离线</text>
+            <text wx:else>数据不可用</text>
           </view>
         </view>
         <view class="address-row">
-          <text class="address-icon">📍</text>
+          <app-icon name="map-pin" size="14" muted="{{true}}" />
           <text class="address-text">{{device.address || '请设置安装位置'}}</text>
         </view>
       </view>
@@ -50,7 +53,9 @@
 
   <white-card title="紧急联系人" customClass="contact-card" showRightContent="true">
     <view slot="rightContent">
-      <text class="add-btn" bindtap="showAddContact">＋</text>
+      <view class="add-btn" bindtap="showAddContact" aria-label="添加紧急联系人">
+        <app-icon name="plus" size="18" />
+      </view>
     </view>
 
     <view wx:for="{{device.contacts}}" wx:key="id" class="contact-item-wrap {{swipeId === item.id && swipeOffset < 0 ? 'swiped' : ''}}">
@@ -71,14 +76,14 @@
     </view>
 
     <view wx:if="{{!device || !device.contacts || device.contacts.length === 0}}" class="empty-state">
-      <text class="empty-icon">📵</text>
+      <view class="empty-icon"><app-icon name="user-round-x" size="42" muted="{{true}}" label="暂无紧急联系人" /></view>
       <text class="empty-text">暂无紧急联系人</text>
       <text class="empty-hint">点击右上角「＋」添加联系人</text>
     </view>
   </white-card>
 
   <view class="unbind-section">
-    <view class="unbind-btn" bindtap="confirmUnbind">解除绑定</view>
+    <view class="unbind-btn" bindtap="confirmRemoveDevice">从本机移除设备</view>
   </view>
   </block>
 </view>
@@ -88,7 +93,9 @@
 <view class="modal-container" wx:if="{{showEditNameModal}}" catchtap>
   <view class="modal-header">
     <view class="modal-title">修改设备名称</view>
-    <view class="modal-close" bindtap="closeEditNameModal">✕</view>
+    <view class="modal-close" bindtap="closeEditNameModal" aria-label="关闭">
+      <app-icon name="x-gray" size="20" />
+    </view>
   </view>
   <view class="modal-body">
     <input 
@@ -111,7 +118,9 @@
 <view class="modal-container" wx:if="{{showAddContactModal}}" catchtap>
   <view class="modal-header">
     <view class="modal-title">添加紧急联系人</view>
-    <view class="modal-close" bindtap="closeAddContactModal">✕</view>
+    <view class="modal-close" bindtap="closeAddContactModal" aria-label="关闭">
+      <app-icon name="x-gray" size="20" />
+    </view>
   </view>
   <view class="modal-body">
     <view class="form-item">

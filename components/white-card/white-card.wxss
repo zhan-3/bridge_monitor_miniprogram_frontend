@@ -19,7 +19,11 @@
 }
 
 .header-left {
-  flex: 1; /* 标题区域占满剩余空间，右侧内容不被挤压 */
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
 
 .header-title {
