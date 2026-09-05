@@ -18,16 +18,24 @@ async function loadDeviceStatus(deviceId, authToken) {
   }
 }
 
-async function loadDeviceLocation(deviceId, authToken) {
+async function requestDeviceLocation(endpoint, deviceId, authToken) {
   try {
-    const locRes = await http.get('/user/getLocation', { deviceSn: deviceId }, {
+    const locRes = await http.get(endpoint, { deviceSn: deviceId }, {
       Authorization: `Bearer ${authToken}`
     });
     return locRes.code === 1 && locRes.data ? locRes.data : null;
   } catch (err) {
-    logger.error('获取设备位置失败', { deviceId, error: err });
+    logger.error('获取设备位置失败', { deviceId, endpoint, error: err });
     return null;
   }
+}
+
+function loadDeviceLocation(deviceId, authToken) {
+  return requestDeviceLocation('/user/getLocation', deviceId, authToken);
+}
+
+export function loadDeviceInstallationLocation(deviceId, authToken) {
+  return requestDeviceLocation('/user/getInstallLocation', deviceId, authToken);
 }
 
 function createDevice(deviceId) {
