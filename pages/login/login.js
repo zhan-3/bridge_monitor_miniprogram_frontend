@@ -4,13 +4,17 @@ import { getStorage, setStorage } from '../../utils/storage'
 import { isValidPhone } from '../../utils/validators'
 import logger from '../../utils/logger'
 const { resolvePostLoginUrl } = require('../../utils/navigation')
+const { normalizeVerificationCode, isValidVerificationCode } = require('../../utils/phoneVerification')
 
 Page({
   data: {
     step: 1,
     loading: false,
     phone: '',
+    verificationCode: '',
     phoneError: false,
+    sendingCode: false,
+    countdown: 0,
     errMsg: '',
     postLoginUrl: '/pages/home/home'
   },
@@ -30,8 +34,26 @@ Page({
   },
 
   finishLogin() {
-    const url = this.data.postLoginUrl || '/pages/home/home'
+    const url = this.data.postLoginUrl || '/pages/alarms/alarms'
     wx.reLaunch({ url })
+  },
+
+  onUnload() {
+    if (this.countdownTimer) clearInterval(this.countdownTimer)
+  },
+
+  async restoreBoundDevices() {
+    try {
+      const statusRes = await http.get('/user/bind/status')
+      const deviceIds = Array.isArray(statusRes.data) ? statusRes.data : []
+      const app = getApp()
+      await Promise.allSettled(deviceIds.map(async deviceId => {
+        const tokenRes = await http.post('/user/bind/userDeviceLogin', { deviceId })
+        if (tokenRes.data) app.bindDevice(deviceId, tokenRes.data, deviceId)
+      }))
+    } catch (err) {
+      logger.error('恢复设备访问凭证失败', { error: err })
+    }
   },
 
   async doLogin() {
@@ -58,9 +80,13 @@ Page({
       app.setLoginToken(token)
       setStorage('isLogin', true)
 
-      // 检查是否已有手机号
-      const userInfo = getStorage('userInfo') || {}
+      // 从后端恢复账号资料；手机号已经验证过时无需再次验证。
+      const profileRes = await http.get('/user/getMainMessage')
+      const userInfo = profileRes.data || {}
+      setStorage('userInfo', userInfo)
       if (userInfo.phone) {
+        setStorage('phone', userInfo.phone)
+        await this.restoreBoundDevices()
         this.finishLogin()
         return
       }
@@ -81,43 +107,64 @@ Page({
     })
   },
 
-  async confirmPhone() {
-    const { phone, loading } = this.data
-    if (loading) return
+  onVerificationCodeInput(e) {
+    this.setData({ verificationCode: normalizeVerificationCode(e.detail.value), errMsg: '' })
+  },
 
-    if (!isValidPhone(phone)) {
+  async sendVerificationCode() {
+    const { phone, phoneError, sendingCode, countdown } = this.data
+    if (sendingCode || countdown > 0) return
+    if (!isValidPhone(phone) || phoneError) {
       this.setData({ phoneError: true })
       wx.toast({ title: '请输入正确的手机号', icon: 'none' })
       return
     }
 
-    this.setData({ loading: true, errMsg: '' })
+    this.setData({ sendingCode: true, errMsg: '' })
+    try {
+      await http.post('/user/phone-verification/send', { phone })
+      this.setData({ countdown: 60 })
+      this.countdownTimer = setInterval(() => {
+        const next = this.data.countdown - 1
+        this.setData({ countdown: Math.max(next, 0) })
+        if (next <= 0) {
+          clearInterval(this.countdownTimer)
+          this.countdownTimer = null
+        }
+      }, 1000)
+    } catch (err) {
+      logger.error('发送手机验证码失败', { error: err })
+      if (!err.userNotified) this.setData({ errMsg: err.msg || '验证码发送失败，请重试' })
+    } finally {
+      this.setData({ sendingCode: false })
+    }
+  },
 
-    const token = getApp().getLoginToken()
-    if (!token) {
-      this.setData({ loading: false, errMsg: '登录状态已失效，请重新登录' })
+  async confirmPhone() {
+    const { phone, verificationCode, loading } = this.data
+    if (loading) return
+    if (!isValidPhone(phone)) {
+      this.setData({ phoneError: true })
+      wx.toast({ title: '请输入正确的手机号', icon: 'none' })
+      return
+    }
+    if (!isValidVerificationCode(verificationCode)) {
+      this.setData({ errMsg: '请输入6位验证码' })
       return
     }
 
+    this.setData({ loading: true, errMsg: '' })
     try {
-      const res = await http.post('/user/userBindPhone?phone=' + encodeURIComponent(phone), {}, {
-        Authorization: `Bearer ${token}`
-      }, true)
-
-      if (res.code !== 1) {
-        this.setData({ errMsg: res.msg || '手机号保存失败，请重试' })
-        return
-      }
-
+      await http.post('/user/phone-verification/confirm', { phone, code: verificationCode })
       const userInfo = getStorage('userInfo') || {}
       userInfo.phone = phone
       setStorage('userInfo', userInfo)
       setStorage('phone', phone)
-
+      await this.restoreBoundDevices()
       this.finishLogin()
     } catch (err) {
-      logger.error('确认手机号流程异常', { error: err })
-      this.setData({ errMsg: err.msg || '网络异常，请重试' })
+      logger.error('验证手机号失败', { error: err })
+      if (!err.userNotified) this.setData({ errMsg: err.msg || '验证失败，请重试' })
     } finally {
       this.setData({ loading: false })
     }

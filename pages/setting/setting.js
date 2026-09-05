@@ -4,12 +4,14 @@ import { getStorage, setStorage } from '../../utils/storage';
 import { isValidPhone } from '../../utils/validators';
 import logger from '../../utils/logger';
 const { normalizeSettingIndex } = require('../../utils/localSettings');
+const { normalizeVerificationCode, isValidVerificationCode } = require('../../utils/phoneVerification');
 
 Page({
   data: {
     userInfo: {},
     showPhoneModal: false,
     phone: '',
+    phoneVerificationCode: '',
     phoneError: false,
     autoRecord: true,
     recordQualityList: ['标准质量', '高清质量', '无损质量'],
@@ -23,6 +25,8 @@ Page({
     deviceLoading: false,
     deviceLoadError: false,
     isBindingPhone: false,
+    isSendingPhoneCode: false,
+    phoneCodeCountdown: 0,
     isLoggingOut: false,
     phoneErrorMessage: '',
     device: null,
@@ -50,6 +54,7 @@ Page({
 
   onUnload() {
     if (this.profileSaveTimer) clearTimeout(this.profileSaveTimer);
+    if (this.phoneCodeTimer) clearInterval(this.phoneCodeTimer);
   },
 
   onChooseAvatar(e) {
@@ -168,12 +173,24 @@ Page({
   },
 
   showPhoneModal() {
-    this.setData({ showPhoneModal: true, phone: '', phoneError: false, phoneErrorMessage: '' });
+    this.setData({
+      showPhoneModal: true,
+      phone: '',
+      phoneVerificationCode: '',
+      phoneError: false,
+      phoneErrorMessage: ''
+    });
   },
 
   hidePhoneModal() {
     if (this.data.isBindingPhone) return;
-    this.setData({ showPhoneModal: false, phone: '', phoneError: false, phoneErrorMessage: '' });
+    this.setData({
+      showPhoneModal: false,
+      phone: '',
+      phoneVerificationCode: '',
+      phoneError: false,
+      phoneErrorMessage: ''
+    });
   },
 
   onPhoneInput(e) {
@@ -186,27 +203,76 @@ Page({
     });
   },
 
+  onPhoneVerificationCodeInput(e) {
+    this.setData({
+      phoneVerificationCode: normalizeVerificationCode(e.detail.value),
+      phoneErrorMessage: ''
+    });
+  },
+
+  async restoreBoundDevices() {
+    try {
+      const statusRes = await http.get('/user/bind/status');
+      const deviceIds = Array.isArray(statusRes.data) ? statusRes.data : [];
+      const app = getApp();
+      await Promise.allSettled(deviceIds.map(async deviceId => {
+        const tokenRes = await http.post('/user/bind/userDeviceLogin', { deviceId });
+        if (tokenRes.data) app.bindDevice(deviceId, tokenRes.data, deviceId);
+      }));
+    } catch (err) {
+      logger.error('设置页恢复设备访问凭证失败', { error: err });
+    }
+  },
+
+  async sendPhoneVerificationCode() {
+    const { phone, isSendingPhoneCode, phoneCodeCountdown } = this.data;
+    if (isSendingPhoneCode || phoneCodeCountdown > 0) return;
+    if (!isValidPhone(phone)) {
+      this.setData({ phoneError: true, phoneErrorMessage: '请输入正确的11位手机号' });
+      return;
+    }
+
+    this.setData({ isSendingPhoneCode: true, phoneErrorMessage: '' });
+    try {
+      await http.post('/user/phone-verification/send', { phone });
+      this.setData({ phoneCodeCountdown: 60 });
+      this.phoneCodeTimer = setInterval(() => {
+        const next = this.data.phoneCodeCountdown - 1;
+        this.setData({ phoneCodeCountdown: Math.max(next, 0) });
+        if (next <= 0) {
+          clearInterval(this.phoneCodeTimer);
+          this.phoneCodeTimer = null;
+        }
+      }, 1000);
+    } catch (err) {
+      logger.error('设置页发送手机验证码失败', { error: err });
+      if (!err.userNotified) this.setData({ phoneErrorMessage: err.msg || '验证码发送失败，请重试' });
+    } finally {
+      this.setData({ isSendingPhoneCode: false });
+    }
+  },
+
   async confirmPhone() {
-    const { phone, isBindingPhone } = this.data;
+    const { phone, phoneVerificationCode, isBindingPhone } = this.data;
     if (isBindingPhone) return;
     if (!isValidPhone(phone)) {
       this.setData({ phoneError: true, phoneErrorMessage: '请输入正确的11位手机号' });
       return;
     }
 
-    const token = getApp().getLoginToken();
-    if (!token) {
-      this.setData({ phoneError: true, phoneErrorMessage: '登录状态已失效，请重新登录' });
+    if (!isValidVerificationCode(phoneVerificationCode)) {
+      this.setData({ phoneErrorMessage: '请输入6位验证码' });
       return;
     }
 
     this.setData({ isBindingPhone: true, phoneErrorMessage: '' });
-    wx.showLoading({ title: '保存中...' });
+    wx.showLoading({ title: '验证中...' });
 
     try {
-      const res = await http.post('/user/userBindPhone?phone=' + encodeURIComponent(phone), {}, {
-        Authorization: `Bearer ${token}`
-      }, true);
+      const res = await http.post('/user/phone-verification/confirm', {
+        phone,
+        code: phoneVerificationCode
+      });
       if (res.code !== 1) {
         this.setData({ phoneError: true, phoneErrorMessage: res.msg || '手机号保存失败，请重试' });
         return;
@@ -215,11 +281,15 @@ Page({
       const userInfo = { ...this.data.userInfo, phone };
       setStorage('userInfo', userInfo);
       setStorage('phone', phone);
+      await this.restoreBoundDevices();
       this.setData({ userInfo, showPhoneModal: false });
       wx.toast({ title: '手机号绑定成功', icon: 'success' });
     } catch (err) {
       logger.error('设置页确认手机号流程异常', { error: err });
-      this.setData({ phoneError: true, phoneErrorMessage: err.msg || '网络异常，请重试' });
+      this.setData({
+        phoneError: false,
+        phoneErrorMessage: err.userNotified ? '' : (err.msg || '网络异常，请重试')
+      });
     } finally {
       wx.hideLoading();
       this.setData({ isBindingPhone: false });

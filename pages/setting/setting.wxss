@@ -93,6 +93,32 @@ page {
 }
 
 /* 弹窗输入验证 */
+.phone-code-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.phone-code-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.phone-code-button {
+  flex-shrink: 0;
+  width: 108px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--orange-light);
+  color: var(--orange-dark);
+  font-size: 13px;
+  line-height: 44px;
+}
+
+.phone-code-button[disabled] {
+  opacity: 0.6;
+}
+
 .input-error {
   border-color: #ff4d4f !important;
 }
