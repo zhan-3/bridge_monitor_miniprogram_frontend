@@ -60,6 +60,33 @@ button::after {
   margin-top: 12px;
 }
 
+/* ===== 请求失败态（通用） ===== */
+.error-state {
+  min-height: 45vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.retry-btn {
+  margin-top: 18px;
+  padding: 0 24px;
+  height: 38px;
+  line-height: 38px;
+  border-radius: 19px;
+  background: #FF7A00;
+  color: #fff;
+  font-size: 14px;
+}
+
+.btn-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 /* ===== 弹窗基础样式（通用） ===== */
 .modal-mask {
   position: fixed;

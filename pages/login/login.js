@@ -2,6 +2,7 @@
 import http from '../../utils/http'
 import { getStorage, setStorage } from '../../utils/storage'
 import { isValidPhone } from '../../utils/validators'
+import logger from '../../utils/logger'
 const { resolvePostLoginUrl } = require('../../utils/navigation')
 
 Page({
@@ -66,7 +67,7 @@ Page({
 
       this.setData({ step: 2, loading: false })
     } catch (err) {
-      console.error('[login] 登录失败:', err)
+      logger.error('登录失败', { error: err })
       this.setData({ loading: false, errMsg: '网络异常，请重试' })
     }
   },
@@ -115,7 +116,7 @@ Page({
 
       this.finishLogin()
     } catch (err) {
-      console.error('[login] confirmPhone 异常:', err)
+      logger.error('确认手机号流程异常', { error: err })
       this.setData({ errMsg: err.msg || '网络异常，请重试' })
     } finally {
       this.setData({ loading: false })

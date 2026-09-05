@@ -2,6 +2,7 @@
 import http from './http';
 import { DEVICE_STATUS_MAP } from './constants';
 import { getStorage, setStorage } from './storage';
+import logger from './logger';
 
 const { loadDeviceDetailsConcurrently } = require('./deviceDetailsLoader');
 
@@ -12,7 +13,7 @@ async function loadDeviceStatus(deviceId, authToken) {
     });
     return bindRes.code === 1 && bindRes.data ? bindRes.data.status : null;
   } catch (err) {
-    console.error('[deviceService] 获取绑定状态失败：', err);
+    logger.error('获取设备绑定状态失败', { deviceId, error: err });
     return null;
   }
 }
@@ -24,7 +25,7 @@ async function loadDeviceLocation(deviceId, authToken) {
     });
     return locRes.code === 1 && locRes.data ? locRes.data : null;
   } catch (err) {
-    console.error('[deviceService] 获取设备位置失败：', err);
+    logger.error('获取设备位置失败', { deviceId, error: err });
     return null;
   }
 }
@@ -52,6 +53,7 @@ function applyStoredName(device) {
     }
   } catch (err) {
     // 页面预览或测试环境可能没有 app 实例，使用 SN 作为默认名称。
+    logger.debug('设备名称使用默认值', { deviceId: device.sn })
   }
 }
 
@@ -96,7 +98,7 @@ export async function loadDeviceContacts(authToken, deviceId) {
       });
     }
   } catch (err) {
-    console.error('[deviceService] 获取联系人失败：', err);
+    logger.error('获取设备联系人失败', { deviceId, error: err });
   }
   return [];
 }

@@ -1,5 +1,6 @@
 import { setStorage, getStorage } from '../../utils/storage'
 import http from '../../utils/http'
+import logger from '../../utils/logger'
 const { normalizeCollectIds, filterAndSortAudio, findAudioById } = require('../../utils/audioState')
 
 Page({
@@ -120,7 +121,7 @@ Page({
         if (typeof innerAudio[method] === 'function') {
           innerAudio[method](cb);
         } else {
-          console.warn('[audioManager] 不支持的事件:', evt);
+          logger.warn('音频管理器收到不支持的事件', { event: evt });
         }
       },
       off: (evt, cb) => {
@@ -213,7 +214,7 @@ Page({
         this.updateFilteredList();
       })
       .catch(err => {
-        console.error('[audio] 网络请求失败：', err && (err.errMsg || err.msg || err));
+        logger.error('音频列表请求失败', { error: err });
       })
       .finally(() => {
         this.isLoadingRecords = false;
@@ -304,7 +305,7 @@ Page({
     // 错误监听
     audioManager.on('error', (err) => {
       err = err || {};
-      console.error('[audio] 播放错误：', err);
+      logger.error('音频播放失败', { error: err });
       const errMsgMap = {
         10001: '系统错误（音频服务异常）',
         10002: '网络错误（音频地址无法访问）',
@@ -455,7 +456,7 @@ Page({
           });
           this.startProgressTimer();
         } catch (err) {
-          console.error('[audio] 播放触发失败：', err);
+          logger.error('音频播放触发失败', { error: err });
           wx.toast({ title: '播放失败，请点击重试', icon: 'none' });
         }
       };

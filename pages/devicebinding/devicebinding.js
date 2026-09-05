@@ -1,6 +1,7 @@
 import http from '../../utils/http';
 import { getStorage, setStorage } from '../../utils/storage';
 import { isValidSN } from '../../utils/validators';
+import logger from '../../utils/logger';
 
 function safeDecode(value) {
   try {
@@ -233,14 +234,14 @@ Page({
           wx.reLaunch({ url: '/pages/home/home' });
         }, 1000);
       } else {
-        console.error('[bindDevice] 绑定失败:', bindRes);
+        logger.warn('设备绑定被服务端拒绝', { error: bindRes });
         wx.toast({ title: bindRes.msg || '绑定失败', icon: 'none' });
       }
 
     } catch (err) {
-      console.error('设备绑定失败：', err);
+      logger.error('设备绑定失败', { error: err });
       const errMsg = err?.msg || err?.message || '绑定失败，请检查网络或设备ID是否正确';
-      wx.toast({ title: errMsg, icon: 'none' });
+      if (!err?.userNotified) wx.toast({ title: errMsg, icon: 'none' });
     } finally {
       this.setData({ isLoading: false });
       wx.hideLoading();

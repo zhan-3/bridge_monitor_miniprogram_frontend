@@ -5,6 +5,12 @@
     <text class="loading-text">加载中...</text>
   </view>
 
+  <view wx:elif="{{loadError}}" class="error-state">
+    <text class="empty-text">设备数据加载失败</text>
+    <text class="empty-hint">请检查网络连接后重试</text>
+    <button class="retry-btn" bindtap="retryLoad">重新加载</button>
+  </view>
+
   <block wx:else>
   <view class="head-card">
     <view class="head-left">

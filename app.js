@@ -2,6 +2,7 @@
 import './utils/extendApi'
 import { setStorage, getStorage, removeStorage, clearStorage } from './utils/storage'
 import { isValidSN } from './utils/validators'
+import logger from './utils/logger'
 
 const { createBoundDeviceSet } = require('./utils/boundDeviceSet')
 const { createLoginCredential } = require('./utils/loginCredential')
@@ -27,6 +28,13 @@ App({
   },
 
   onLaunch(options) {
+    try {
+      const { envVersion } = wx.getAccountInfoSync().miniProgram
+      logger.configure({ minLevel: envVersion === 'release' ? 'info' : 'debug' })
+    } catch (error) {
+      logger.warn('无法读取运行环境，使用默认日志级别', { error })
+    }
+    logger.info('小程序启动')
     const storage = wxStorageAdapter()
     this.loginCredential = createLoginCredential(storage)
     this.boundDeviceSet = createBoundDeviceSet(storage)
@@ -51,9 +59,17 @@ App({
         const sn = decodeURIComponent(encodedSN).trim().toUpperCase()
         if (isValidSN(sn)) this.globalData.pendingSN = sn
       } catch (err) {
-        console.warn('[app] 忽略无法解析的设备场景参数')
+        logger.warn('设备场景参数解析失败', { error: err })
       }
     }
+  },
+
+  onError(error) {
+    logger.error('小程序运行异常', { error })
+  },
+
+  onUnhandledRejection(event) {
+    logger.error('未处理的 Promise 异常', { reason: event && event.reason })
   },
 
   syncBoundDeviceState() {

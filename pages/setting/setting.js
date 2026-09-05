@@ -2,6 +2,7 @@ import { loadDeviceData, buildMarkers } from '../../utils/deviceService';
 import http from '../../utils/http';
 import { getStorage, setStorage } from '../../utils/storage';
 import { isValidPhone } from '../../utils/validators';
+import logger from '../../utils/logger';
 const { normalizeSettingIndex } = require('../../utils/localSettings');
 
 Page({
@@ -19,6 +20,8 @@ Page({
     alarmSound: true,
     disconnectWarn: true,
     isDeviceSetting: false,
+    deviceLoading: false,
+    deviceLoadError: false,
     isSaving: false,
     isBindingPhone: false,
     phoneErrorMessage: '',
@@ -73,19 +76,31 @@ Page({
     try {
       await http.post('/user/getMessage', fields)
     } catch (err) {
-      console.log('[setting] 保存用户信息失败（已缓存本地）:', err)
+      logger.warn('保存用户信息失败，已缓存本地', { error: err })
     }
   },
 
   async loadDevice(deviceId) {
-    const app = getApp();
-    const deviceEntry = app.getDevice(deviceId);
-    const authToken = deviceEntry ? deviceEntry.deviceAccessToken : '';
+    this.setData({ deviceLoading: true, deviceLoadError: false });
+    try {
+      const app = getApp();
+      const deviceEntry = app.getDevice(deviceId);
+      const authToken = deviceEntry ? deviceEntry.deviceAccessToken : '';
+      const device = await loadDeviceData(deviceId, authToken);
+      const markers = buildMarkers(device);
+      const deviceLoadError = device.status === 'unknown' && !device.address && markers.length === 0;
+      this.setData({ device, markers, deviceLoadError });
+    } catch (err) {
+      logger.error('设置页加载设备信息失败', { deviceId, error: err });
+      this.setData({ deviceLoadError: true });
+    } finally {
+      this.setData({ deviceLoading: false });
+    }
+  },
 
-    const device = await loadDeviceData(deviceId, authToken);
-    const markers = buildMarkers(device);
-
-    this.setData({ device, markers });
+  retryLoadDevice() {
+    const deviceId = this.data.device && this.data.device.id;
+    if (deviceId) this.loadDevice(deviceId);
   },
 
   loadLocalSetting() {
@@ -188,7 +203,7 @@ Page({
       this.setData({ userInfo, showPhoneModal: false });
       wx.toast({ title: '手机号绑定成功', icon: 'success' });
     } catch (err) {
-      console.error('[setting] confirmPhone 异常:', err);
+      logger.error('设置页确认手机号流程异常', { error: err });
       this.setData({ phoneError: true, phoneErrorMessage: err.msg || '网络异常，请重试' });
     } finally {
       wx.hideLoading();
@@ -274,13 +289,13 @@ Page({
               Authorization: `Bearer ${authToken}`
             });
           } catch (err) {
-            console.error('[setting] 保存设备位置失败：', err);
+            logger.error('保存设备位置失败', { error: err });
           }
 
           wx.toast({ title: '位置已选择', icon: 'success' });
         },
         fail: (err) => {
-          console.error('[setting] chooseLocation fail:', err);
+          logger.error('选择设备位置失败', { error: err });
           if (err.errMsg && err.errMsg.includes('cancel')) return;
           wx.toast({ title: '选择位置失败', icon: 'none' });
         }

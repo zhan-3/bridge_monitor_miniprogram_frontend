@@ -3,6 +3,7 @@ import { getStorage, setStorage } from '../../utils/storage';
 import { loadDeviceDetails } from '../../utils/deviceService';
 const { createRequestVersion } = require('../../utils/requestVersion');
 import { DEVICE_STATUS_MAP } from '../../utils/constants';
+import logger from '../../utils/logger';
 
 Page({
   data: {
@@ -18,7 +19,10 @@ Page({
     swipeOffset: 0,
     touchStartX: 0,
     currentSn: '',
-    currentDeviceAccessToken: ''
+    currentDeviceAccessToken: '',
+    loadError: false,
+    savingContact: false,
+    deletingContactId: ''
   },
 
   onLoad(options) {
@@ -59,25 +63,28 @@ Page({
     const authToken = app.getDeviceAccessToken(currentSn) || this.data.currentDeviceAccessToken;
 
     if (!currentSn || !authToken) {
-      this.setData({ isLoading: false });
-      wx.toast({ title: '设备凭证不可用', icon: 'none' });
+      this.setData({ isLoading: false, loadError: true });
       return;
     }
 
-    this.setData({ isLoading: true });
+    this.setData({ isLoading: true, loadError: false });
     try {
       const { device, markers } = await loadDeviceDetails(currentSn, authToken);
       if (!this.detailRequests.isCurrent(requestVersion) || currentSn !== this.data.currentSn) return;
       this.setData({ device, markers });
     } catch (err) {
       if (!this.detailRequests.isCurrent(requestVersion)) return;
-      console.error('加载设备详情失败：', err);
-      wx.toast({ title: '设备详情加载失败', icon: 'none' });
+      logger.error('加载设备详情失败', { error: err });
+      this.setData({ loadError: true });
     } finally {
       if (this.detailRequests.isCurrent(requestVersion)) {
         this.setData({ isLoading: false });
       }
     }
+  },
+
+  retryLoad() {
+    this.loadDeviceFromAPI();
   },
 
   editName() {
@@ -132,6 +139,7 @@ Page({
   },
 
   async saveContact() {
+    if (this.data.savingContact) return;
     const { tempContactName, tempContactPhone, device } = this.data;
     if (!tempContactName) {
       wx.toast({ title: '请输入联系人姓名', icon: 'none' });
@@ -147,6 +155,7 @@ Page({
       return;
     }
 
+    this.setData({ savingContact: true });
     try {
       wx.showLoading({ title: '添加中...', mask: true });
       const authToken = getApp().getDeviceAccessToken(this.data.currentSn) || this.data.currentDeviceAccessToken;
@@ -178,19 +187,23 @@ Page({
         wx.toast({ title: '添加成功', icon: 'success' });
       }
     } catch (err) {
+      logger.error('添加联系人失败', { error: err });
+    } finally {
       wx.hideLoading();
-      console.error('添加联系人失败：', err);
+      this.setData({ savingContact: false });
     }
   },
 
   async deleteContact(e) {
     const contactId = e.currentTarget.dataset.id;
+    if (this.data.deletingContactId) return;
     const contact = this.data.device.contacts.find(c => c.id === contactId);
     if (!contact) return;
 
     const confirmed = await wx.modal({ content: '确定要删除该联系人吗？' });
     if (!confirmed) return;
 
+    this.setData({ deletingContactId: contactId });
     try {
       wx.showLoading({ title: '删除中...', mask: true });
       const authToken = getApp().getDeviceAccessToken(this.data.currentSn) || this.data.currentDeviceAccessToken;
@@ -206,8 +219,10 @@ Page({
         wx.toast({ title: '删除成功', icon: 'success' });
       }
     } catch (err) {
+      logger.error('删除联系人失败', { error: err });
+    } finally {
       wx.hideLoading();
-      console.error('删除联系人失败：', err);
+      this.setData({ deletingContactId: '' });
     }
   },
 

@@ -5,6 +5,12 @@
     <text class="loading-text">加载设备信息...</text>
   </view>
 
+  <view wx:elif="{{loadError}}" class="error-state">
+    <text class="empty-text">设备信息加载失败</text>
+    <text class="empty-hint">请检查网络连接或设备权限</text>
+    <button class="retry-btn" bindtap="retryLoad">重新加载</button>
+  </view>
+
   <block wx:else>
   <view class="map-section">
     <map
@@ -72,7 +78,7 @@
           <view class="contact-phone">{{item.phone}}</view>
         </view>
       </view>
-      <view class="delete-btn" data-id="{{item.id}}" bindtap="deleteContact">删除</view>
+      <view class="delete-btn {{deletingContactId === item.id ? 'btn-disabled' : ''}}" data-id="{{item.id}}" bindtap="deleteContact">{{deletingContactId === item.id ? '删除中…' : '删除'}}</view>
     </view>
 
     <view wx:if="{{!device || !device.contacts || device.contacts.length === 0}}" class="empty-state">
@@ -148,6 +154,6 @@
   </view>
   <view class="modal-footer">
     <view class="modal-btn cancel" bindtap="closeAddContactModal" hover-class="btn-press">取消</view>
-    <view class="modal-btn confirm" bindtap="saveContact" hover-class="btn-press">确认添加</view>
+    <view class="modal-btn confirm {{savingContact ? 'btn-disabled' : ''}}" bindtap="saveContact" hover-class="btn-press">{{savingContact ? '添加中…' : '确认添加'}}</view>
   </view>
 </view>

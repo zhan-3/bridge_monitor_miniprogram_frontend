@@ -1,6 +1,7 @@
 import { getStorage, setStorage } from '../../utils/storage';
 import http from '../../utils/http';
 import { DEVICE_STATUS_MAP } from '../../utils/constants';
+import logger from '../../utils/logger';
 
 Page({
   data: {
@@ -9,7 +10,8 @@ Page({
     devices: [],
     currentSn: '',   // 当前激活的设备SN
     hasPhone: false,
-    pageLoading: true
+    pageLoading: true,
+    loadError: false
   },
 
   // 把状态映射表定义为页面私有常量（避免data读取延迟问题）
@@ -31,7 +33,8 @@ Page({
         userInfo: {},
         devices: [],
         currentSn: '',
-        pageLoading: false
+        pageLoading: false,
+        loadError: false
       });
       return
     }
@@ -45,7 +48,8 @@ Page({
         userInfo,
         devices: [],
         currentSn: '',
-        pageLoading: false
+        pageLoading: false,
+        loadError: false
       });
       wx.showModal({
         title: '请绑定手机号',
@@ -63,7 +67,8 @@ Page({
       isLogin: true,
       hasPhone: true,
       userInfo,
-      currentSn: app.globalData.selectedDeviceSn
+      currentSn: app.globalData.selectedDeviceSn,
+      loadError: false
     });
     Promise.all([
       this.loadUserInfo(),
@@ -110,7 +115,7 @@ Page({
         return;
       }
     } catch (err) {
-      console.error('获取用户信息失败：', err);
+      logger.error('获取用户信息失败', { error: err });
     }
     const userInfo = getStorage('userInfo') || {};
     if (this.isPageVisible) this.setData({ userInfo });
@@ -125,7 +130,7 @@ Page({
       const boundDevices = app.listBoundDevices();
 
       if (!boundDevices || boundDevices.length === 0) {
-        this.setData({ devices: [] });
+        this.setData({ devices: [], loadError: false });
         return;
       }
 
@@ -147,7 +152,7 @@ Page({
             }
             return null;
           }).catch(err => {
-            console.error('获取设备状态失败：', device.sn, err);
+            logger.error('获取设备状态失败', { deviceSn: device.sn, error: err });
             const displayName = (device.name && device.name !== device.sn) ? device.name : device.sn;
             return {
               id: device.sn,
@@ -163,15 +168,23 @@ Page({
       const devices = results
         .map(r => r.status === 'fulfilled' ? r.value : null)
         .filter(Boolean);
+      const loadError = devices.length > 0 && devices.every(device => device.status === 'unknown');
 
       // 页面已隐藏时丢弃迟到结果；数据未变化时避免无意义渲染。
       if (!this.isPageVisible) return;
-      if (JSON.stringify(devices) !== JSON.stringify(this.data.devices)) {
-        this.setData({ devices });
+      if (JSON.stringify(devices) !== JSON.stringify(this.data.devices) || loadError !== this.data.loadError) {
+        this.setData({ devices, loadError });
       }
     } finally {
       this.isLoadingDevices = false;
     }
+  },
+
+  retryLoad() {
+    this.setData({ loadError: false, pageLoading: true });
+    Promise.all([this.loadUserInfo(), this.loadAllDevices()]).finally(() => {
+      if (this.isPageVisible) this.setData({ pageLoading: false });
+    });
   },
 
   // 下拉刷新
