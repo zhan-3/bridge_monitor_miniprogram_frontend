@@ -1,21 +1,27 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeAlarmItems } = require('../utils/alarmInbox');
+const { formatDateTime, normalizeAlarmItems } = require('../utils/alarmInbox');
 
-test('normalizes alarm ids and display timestamps without inventing status', () => {
-  assert.deepEqual(normalizeAlarmItems([{
+test('formats recent alarm times in a human-friendly way', () => {
+  const now = new Date('2026-09-05T18:00:00');
+  assert.equal(formatDateTime('2026-09-05T12:30:00', now), '今天 12:30');
+  assert.equal(formatDateTime('2026-09-04T22:10:00', now), '昨天 22:10');
+  assert.equal(formatDateTime('2026-08-30T08:05:00', now), '8月30日 08:05');
+  assert.equal(formatDateTime('2025-12-31T23:00:00', now), '2025年12月31日 23:00');
+});
+
+test('normalizes alarm ids without inventing status', () => {
+  const item = normalizeAlarmItems([{
     alarmId: 9007199254740991,
-    alarmTime: '2026-09-05T12:30:00',
+    alarmTime: null,
     handledAt: null,
     status: 'pending'
-  }]), [{
-    alarmId: '9007199254740991',
-    alarmTime: '2026-09-05T12:30:00',
-    handledAt: null,
-    status: 'pending',
-    displayTime: '2026-09-05 12:30:00',
-    displayHandledAt: ''
-  }]);
+  }])[0];
+
+  assert.equal(item.alarmId, '9007199254740991');
+  assert.equal(item.status, 'pending');
+  assert.equal(item.displayTime, '时间未知');
+  assert.equal(item.displayHandledAt, '');
 });
 
 test('treats a missing alarm collection as empty', () => {

@@ -1,52 +1,100 @@
-<view class="page">
-  <view class="page-header">
-    <view>
-      <text class="title">报警记录</text>
-      <text class="hint">仅展示已收到的报警，不代表设备实时在线状态</text>
+<view class="container">
+  <view class="head-card">
+    <view class="head-icon">
+      <app-icon name="bell-white" size="28" label="报警记录" />
     </view>
-    <button class="devices-link" bindtap="goDevices">设备管理</button>
+    <view class="head-content">
+      <text class="head-title">报警记录</text>
+      <text class="head-subtitle">及时确认每一次设备报警</text>
+    </view>
+    <view class="manage-link" bindtap="goDevices" aria-label="进入设备管理">
+      <text>设备管理</text>
+      <text class="manage-arrow">›</text>
+    </view>
   </view>
 
-  <view wx:if="{{!isLogin}}" class="empty-card">
-    <text class="empty-title">登录后查看报警</text>
-    <text class="empty-hint">登录并绑定手机号后才能接收报警记录</text>
+  <view class="notice-bar">
+    <app-icon name="triangle-alert" size="18" label="说明" />
+    <text>这里记录设备曾经发出的报警；“已处理”仅表示人工确认，不代表设备当前状态。</text>
+  </view>
+
+  <view wx:if="{{!isLogin}}" class="state-panel">
+    <view class="state-icon"><app-icon name="inbox" size="44" muted="{{true}}" label="暂无报警记录" /></view>
+    <text class="state-title">登录后查看报警记录</text>
+    <text class="state-hint">我们会按时间整理与你相关的设备报警</text>
     <button class="primary-button" bindtap="goLogin">去登录</button>
   </view>
 
   <block wx:else>
-    <view class="tabs">
+    <view class="tabs" aria-label="报警状态筛选">
       <view class="tab {{activeStatus === 'pending' ? 'active' : ''}}" data-status="pending" bindtap="selectStatus">待处理</view>
       <view class="tab {{activeStatus === 'handled' ? 'active' : ''}}" data-status="handled" bindtap="selectStatus">已处理</view>
       <view class="tab {{activeStatus === 'all' ? 'active' : ''}}" data-status="all" bindtap="selectStatus">全部</view>
     </view>
 
-    <view wx:if="{{loadError}}" class="empty-card">
-      <text class="empty-title">报警列表加载失败</text>
+    <view wx:if="{{loading && alarms.length === 0}}" class="loading-screen compact-loading">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">正在整理报警记录...</text>
+    </view>
+
+    <view wx:elif="{{loadError && alarms.length === 0}}" class="state-panel">
+      <view class="state-icon"><app-icon name="circle-minus-danger" size="42" label="加载失败" /></view>
+      <text class="state-title">暂时无法获取报警记录</text>
+      <text class="state-hint">请检查网络连接后再试一次</text>
       <button class="primary-button" bindtap="retryLoad">重新加载</button>
     </view>
 
-    <view wx:elif="{{!loading && alarms.length === 0}}" class="empty-card">
-      <text class="empty-title">暂无{{activeStatus === 'pending' ? '待处理' : ''}}报警</text>
-      <text class="empty-hint">设备是触发式通信，待机时不会持续上报状态</text>
+    <view wx:elif="{{!loading && alarms.length === 0}}" class="state-panel">
+      <view class="state-icon"><app-icon name="inbox" size="44" muted="{{true}}" label="暂无记录" /></view>
+      <text class="state-title">{{activeStatus === 'pending' ? '没有待处理报警' : activeStatus === 'handled' ? '还没有已处理记录' : '暂时没有报警记录'}}</text>
+      <text class="state-hint">{{activeStatus === 'pending' ? '当前没有需要你确认的报警' : '设备发出报警后会显示在这里'}}</text>
     </view>
 
-    <view wx:else class="alarm-list">
-      <view wx:for="{{alarms}}" wx:key="alarmId" class="alarm-card">
-        <view class="alarm-topline">
-          <text class="device-name">设备 {{item.deviceSn}}</text>
-          <text class="alarm-status {{item.status}}">{{item.status === 'handled' ? '已处理' : '待处理'}}</text>
+    <view wx:else class="alarm-sheet">
+      <view wx:for="{{alarms}}" wx:key="alarmId" class="alarm-item">
+        <view class="status-mark {{item.status}}"></view>
+        <view class="alarm-content">
+          <view class="alarm-topline">
+            <text class="device-name">设备 {{item.deviceSn || '未知'}}</text>
+            <text class="alarm-status {{item.status}}">{{item.status === 'handled' ? '已处理' : '待处理'}}</text>
+          </view>
+
+          <text class="alarm-time">{{item.displayTime}}</text>
+
+          <view class="alarm-details">
+            <view class="detail-item">
+              <app-icon name="map-pin" size="15" muted="{{true}}" />
+              <text>{{item.gpsLat !== null && item.gpsLng !== null ? '已记录报警位置' : '未提供报警位置'}}</text>
+            </view>
+            <view wx:if="{{item.fileId}}" class="detail-item">
+              <app-icon name="audio-lines" size="15" muted="{{true}}" />
+              <text>已保存报警录音</text>
+            </view>
+          </view>
+
+          <view class="alarm-actions">
+            <view
+              wx:if="{{item.gpsLat !== null && item.gpsLng !== null}}"
+              class="location-action"
+              data-lat="{{item.gpsLat}}"
+              data-lng="{{item.gpsLng}}"
+              data-sn="{{item.deviceSn}}"
+              bindtap="openAlarmLocation"
+            >查看位置</view>
+            <button
+              wx:if="{{item.status === 'pending'}}"
+              class="handle-button {{handlingId === item.alarmId ? 'btn-disabled' : ''}}"
+              data-id="{{item.alarmId}}"
+              bindtap="handleAlarm"
+            >{{handlingId === item.alarmId ? '确认中…' : '确认已处理'}}</button>
+            <text wx:elif="{{item.displayHandledAt}}" class="handled-time">{{item.displayHandledAt}} 已确认</text>
+          </view>
         </view>
-        <text class="alarm-time">{{item.displayTime}}</text>
-        <view class="alarm-meta">
-          <text wx:if="{{item.gpsLat !== null && item.gpsLng !== null}}">位置已上报</text>
-          <text wx:else>未提供报警位置</text>
-          <text wx:if="{{item.fileId}}"> · 有录音</text>
-        </view>
-        <button wx:if="{{item.status === 'pending'}}" class="handle-button" data-id="{{item.alarmId}}" bindtap="handleAlarm">标记已处理</button>
-        <text wx:elif="{{item.displayHandledAt}}" class="handled-time">处理时间：{{item.displayHandledAt}}</text>
       </view>
-      <view wx:if="{{loading}}" class="loading-text">加载中...</view>
-      <view wx:elif="{{hasMore}}" class="more-button" bindtap="loadMore">加载更多</view>
+
+      <view wx:if="{{loading}}" class="list-footer">正在加载...</view>
+      <view wx:elif="{{hasMore}}" class="list-footer more-button" bindtap="loadMore">加载更多记录</view>
+      <view wx:else class="list-footer end-text">没有更多记录了</view>
     </view>
   </block>
 </view>

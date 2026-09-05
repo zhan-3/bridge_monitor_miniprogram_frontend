@@ -25,7 +25,13 @@ Page({
   selectStatus(e) {
     const status = e.currentTarget.dataset.status;
     if (status === this.data.activeStatus || this.data.loading) return;
-    this.setData({ activeStatus: status });
+    this.setData({
+      activeStatus: status,
+      alarms: [],
+      page: 1,
+      hasMore: false,
+      loadError: false
+    });
     if (this.data.isLogin) this.loadAlarms(true);
   },
 
@@ -48,7 +54,11 @@ Page({
       });
     } catch (error) {
       logger.error('加载报警列表失败', { error });
-      this.setData({ loadError: true });
+      if (this.data.alarms.length === 0) {
+        this.setData({ loadError: true });
+      } else {
+        wx.showToast({ title: '加载更多失败，请重试', icon: 'none' });
+      }
     } finally {
       this.setData({ loading: false });
     }
@@ -74,22 +84,37 @@ Page({
     const alarmId = String(e.currentTarget.dataset.id || '');
     if (!alarmId || this.data.handlingId) return;
     const confirmed = await wx.modal({
-      title: '标记报警',
-      content: '仅记录人工处理结果，不代表设备已经恢复正常。',
-      confirmText: '标记已处理'
+      title: '确认已经处理？',
+      content: '你和其他联系人都将看到“已处理”。这不会改变设备当前状态。',
+      confirmText: '确认已处理'
     });
     if (!confirmed) return;
 
     this.setData({ handlingId: alarmId });
     try {
       await http.post('/user/alarms/handle', { alarmId });
-      wx.showToast({ title: '已标记处理', icon: 'success' });
-      this.loadAlarms(true);
+      wx.showToast({ title: '已确认处理', icon: 'success' });
+      await this.loadAlarms(true);
     } catch (error) {
       logger.error('标记报警处理失败', { alarmId, error });
     } finally {
       this.setData({ handlingId: '' });
     }
+  },
+
+  openAlarmLocation(e) {
+    const latitude = Number(e.currentTarget.dataset.lat);
+    const longitude = Number(e.currentTarget.dataset.lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      wx.showToast({ title: '位置数据不可用', icon: 'none' });
+      return;
+    }
+    wx.openLocation({
+      latitude,
+      longitude,
+      scale: 16,
+      name: `设备 ${e.currentTarget.dataset.sn || ''} 报警位置`
+    });
   },
 
   goLogin() {
