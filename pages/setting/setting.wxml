@@ -132,8 +132,15 @@
       </view>
     </white-card>
 
-      <view class="save-btn-container">
+    <view class="save-btn-container">
       <custom-button text="{{isSaving ? '保存中…' : '保存所有设置'}}" type="orange" size="large" disabled="{{isSaving}}" customClass="save-btn" bind:click="saveSetting"></custom-button>
+    </view>
+
+    <view wx:if="{{!isDeviceSetting}}" class="account-actions">
+      <button class="logout-btn {{isLoggingOut ? 'btn-disabled' : ''}}" bindtap="logout">
+        {{isLoggingOut ? '正在退出…' : '退出登录'}}
+      </button>
+      <text class="logout-hint">退出后不会删除服务器上的报警记录</text>
     </view>
   </scroll-view>
 </view>

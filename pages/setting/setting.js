@@ -24,6 +24,7 @@ Page({
     deviceLoadError: false,
     isSaving: false,
     isBindingPhone: false,
+    isLoggingOut: false,
     phoneErrorMessage: '',
     device: null,
     markers: [],
@@ -319,6 +320,22 @@ Page({
       },
       fail: openPicker
     });
+  },
+
+  async logout() {
+    if (this.data.isLoggingOut) return;
+    const confirmed = await wx.modal({
+      title: '退出登录？',
+      content: '退出后将清除本机保存的登录信息和设备访问凭证。',
+      confirmText: '退出登录',
+      confirmColor: '#f53f3f'
+    });
+    if (!confirmed) return;
+
+    this.setData({ isLoggingOut: true });
+    getApp().clearAuthState();
+    wx.showToast({ title: '已退出登录', icon: 'success' });
+    wx.reLaunch({ url: '/pages/alarms/alarms' });
   },
 
   saveSetting() {
