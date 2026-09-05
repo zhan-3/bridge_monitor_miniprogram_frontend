@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { resolvePostLoginUrl } = require('../utils/navigation');
+const { HOME_URL, resolvePostLoginUrl } = require('../utils/navigation');
 
 test('returns to a safe internal page after login', () => {
   assert.equal(
@@ -16,8 +16,12 @@ test('uses pending device SN when no explicit redirect exists', () => {
   );
 });
 
+test('uses the alarm inbox as the default landing page', () => {
+  assert.equal(HOME_URL, '/pages/alarms/alarms');
+});
+
 test('rejects external and traversal redirects', () => {
-  assert.equal(resolvePostLoginUrl('https://evil.example', ''), '/pages/home/home');
-  assert.equal(resolvePostLoginUrl('/pages/../admin', ''), '/pages/home/home');
-  assert.equal(resolvePostLoginUrl('/pages/not-registered/not-registered', ''), '/pages/home/home');
+  assert.equal(resolvePostLoginUrl('https://evil.example', ''), HOME_URL);
+  assert.equal(resolvePostLoginUrl('/pages/../admin', ''), HOME_URL);
+  assert.equal(resolvePostLoginUrl('/pages/not-registered/not-registered', ''), HOME_URL);
 });

@@ -1,0 +1,78 @@
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 32rpx 28rpx 48rpx;
+  background: #f6f6f6;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 28rpx;
+}
+
+.title, .hint { display: block; }
+.title { font-size: 44rpx; font-weight: 700; color: #222; }
+.hint { margin-top: 8rpx; font-size: 24rpx; color: #777; }
+
+.devices-link {
+  margin: 0 0 0 20rpx;
+  padding: 0 24rpx;
+  min-width: 150rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+  border-radius: 32rpx;
+  background: #fff;
+  color: #e86a00;
+  font-size: 26rpx;
+}
+
+.tabs {
+  display: flex;
+  padding: 8rpx;
+  margin-bottom: 24rpx;
+  border-radius: 18rpx;
+  background: #fff;
+}
+
+.tab {
+  flex: 1;
+  padding: 18rpx 0;
+  border-radius: 14rpx;
+  color: #777;
+  text-align: center;
+  font-size: 28rpx;
+}
+
+.tab.active { background: #fff1e6; color: #e86a00; font-weight: 600; }
+
+.alarm-card, .empty-card {
+  margin-bottom: 20rpx;
+  padding: 28rpx;
+  border-radius: 20rpx;
+  background: #fff;
+  box-shadow: 0 4rpx 14rpx rgba(0, 0, 0, .05);
+}
+
+.alarm-topline { display: flex; justify-content: space-between; align-items: center; }
+.device-name { font-size: 30rpx; font-weight: 600; color: #222; }
+.alarm-time, .alarm-meta, .handled-time { display: block; margin-top: 12rpx; font-size: 25rpx; color: #777; }
+
+.alarm-status { padding: 8rpx 16rpx; border-radius: 18rpx; font-size: 24rpx; }
+.alarm-status.pending { color: #c62828; background: #ffebee; }
+.alarm-status.handled { color: #2e7d32; background: #e8f5e9; }
+
+.handle-button, .primary-button {
+  margin: 24rpx 0 0;
+  border-radius: 30rpx;
+  background: #ff7a00;
+  color: #fff;
+  font-size: 27rpx;
+}
+
+.empty-card { padding: 80rpx 32rpx; text-align: center; }
+.empty-title, .empty-hint { display: block; }
+.empty-title { color: #444; font-size: 30rpx; }
+.empty-hint { margin-top: 12rpx; color: #999; font-size: 25rpx; }
+.loading-text, .more-button { padding: 24rpx; color: #888; text-align: center; font-size: 26rpx; }

@@ -1,6 +1,7 @@
-const HOME_URL = '/pages/home/home';
+const HOME_URL = '/pages/alarms/alarms';
 const POST_LOGIN_PATHS = new Set([
   HOME_URL,
+  '/pages/home/home',
   '/pages/devicebinding/devicebinding'
 ]);
 

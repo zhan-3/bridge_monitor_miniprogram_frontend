@@ -1,5 +1,6 @@
 {
 "pages": [
+    "pages/alarms/alarms",
     "pages/home/home",
     "pages/device-detail/device-detail",
     "pages/login/login",
