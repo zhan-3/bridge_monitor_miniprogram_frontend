@@ -159,22 +159,6 @@ page {
   background-size: 12rpx 6rpx;
 }
 
-/* 保存按钮容器 */
-.save-btn-container {
-  padding: 20rpx 0;
-}
-/* 保存按钮样式 - 统一橙色主题 */
-.save-btn {
-  width: 100% !important;
-  height: 90rpx !important;
-  line-height: 90rpx !important;
-  border-radius: 15rpx !important;
-  font-size: 32rpx !important;
-  font-weight: 500 !important;
-  --orange-primary: #FF7A00;
-  --orange-dark: #E86A00;
-}
-
 /* 退出登录 */
 .account-actions {
   display: flex;

@@ -22,7 +22,6 @@ Page({
     isDeviceSetting: false,
     deviceLoading: false,
     deviceLoadError: false,
-    isSaving: false,
     isBindingPhone: false,
     isLoggingOut: false,
     phoneErrorMessage: '',
@@ -34,11 +33,14 @@ Page({
 
   onLoad(options) {
     this.loadUserInfo();
-    if (options.id) {
-      this.setData({ isDeviceSetting: true });
+    const isDeviceSetting = Boolean(options.id);
+    this.setData({ isDeviceSetting });
+    wx.setNavigationBarTitle({ title: isDeviceSetting ? '设备设置' : '个人设置' });
+    if (isDeviceSetting) {
       this.loadDevice(options.id);
+    } else {
+      this.loadLocalSetting();
     }
-    this.loadLocalSetting();
   },
 
   loadUserInfo() {
@@ -48,7 +50,6 @@ Page({
 
   onUnload() {
     if (this.profileSaveTimer) clearTimeout(this.profileSaveTimer);
-    if (this.navigateTimer) clearTimeout(this.navigateTimer);
   },
 
   onChooseAvatar(e) {
@@ -129,28 +130,41 @@ Page({
     });
   },
 
+  updateLocalSettings(patch) {
+    const settings = {
+      autoRecord: this.data.autoRecord,
+      qualityIndex: this.data.qualityIndex,
+      dayIndex: this.data.dayIndex,
+      alarmPush: this.data.alarmPush,
+      alarmSound: this.data.alarmSound,
+      disconnectWarn: this.data.disconnectWarn
+    };
+    this.setData(patch);
+    setStorage('localSettings', { ...settings, ...patch });
+  },
+
   switchAutoRecord(e) {
-    this.setData({ autoRecord: e.detail.value });
+    this.updateLocalSettings({ autoRecord: e.detail.value });
   },
 
   changeRecordQuality(e) {
-    this.setData({ qualityIndex: normalizeSettingIndex(e.detail.value, 1, 2) });
+    this.updateLocalSettings({ qualityIndex: normalizeSettingIndex(e.detail.value, 1, 2) });
   },
 
   changeSaveDay(e) {
-    this.setData({ dayIndex: normalizeSettingIndex(e.detail.value, 1, 3) });
+    this.updateLocalSettings({ dayIndex: normalizeSettingIndex(e.detail.value, 1, 3) });
   },
 
   switchAlarmPush(e) {
-    this.setData({ alarmPush: e.detail.value });
+    this.updateLocalSettings({ alarmPush: e.detail.value });
   },
 
   switchAlarmSound(e) {
-    this.setData({ alarmSound: e.detail.value });
+    this.updateLocalSettings({ alarmSound: e.detail.value });
   },
 
   switchDisconnectWarn(e) {
-    this.setData({ disconnectWarn: e.detail.value });
+    this.updateLocalSettings({ disconnectWarn: e.detail.value });
   },
 
   showPhoneModal() {
@@ -325,9 +339,9 @@ Page({
   async logout() {
     if (this.data.isLoggingOut) return;
     const confirmed = await wx.modal({
-      title: '退出登录？',
-      content: '退出后将清除本机保存的登录信息和设备访问凭证。',
-      confirmText: '退出登录',
+      title: '退出登录',
+      content: '确定要退出当前账号吗？',
+      confirmText: '退出',
       confirmColor: '#f53f3f'
     });
     if (!confirmed) return;
@@ -336,25 +350,5 @@ Page({
     getApp().clearAuthState();
     wx.showToast({ title: '已退出登录', icon: 'success' });
     wx.reLaunch({ url: '/pages/alarms/alarms' });
-  },
-
-  saveSetting() {
-    if (this.data.isSaving) return;
-    this.setData({ isSaving: true });
-    const { device, isDeviceSetting } = this.data;
-
-    if (isDeviceSetting && device) {
-      getApp().renameDevice(device.sn, device.name);
-    }
-
-    const { autoRecord, qualityIndex, dayIndex, alarmPush, alarmSound, disconnectWarn } = this.data;
-    setStorage('localSettings', { autoRecord, qualityIndex, dayIndex, alarmPush, alarmSound, disconnectWarn });
-
-    wx.toast({ title: '保存成功', icon: 'success' });
-
-    this.navigateTimer = setTimeout(() => {
-      wx.navigateBack();
-      this.navigateTimer = null;
-    }, 800);
   }
 });

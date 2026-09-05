@@ -98,7 +98,8 @@
       </white-card>
     </block>
 
-    <white-card title="录音设置" titleIcon="mic" customClass="setting-module-card" footerText="报警时现场录音相关配置">
+    <block wx:if="{{!isDeviceSetting}}">
+    <white-card title="录音偏好" titleIcon="mic" customClass="setting-module-card">
       <view class="setting-item">
         <view class="item-label">报警自动录音</view>
         <switch class="item-switch" checked="{{autoRecord}}" bindchange="switchAutoRecord" />
@@ -117,7 +118,7 @@
       </view>
     </white-card>
 
-    <white-card title="硬件报警设置" titleIcon="settings-2" customClass="setting-module-card" footerText="报警器硬件与APP联动配置">
+    <white-card title="提醒偏好" titleIcon="settings-2" customClass="setting-module-card">
       <view class="setting-item">
         <view class="item-label">APP报警推送</view>
         <switch class="item-switch" checked="{{alarmPush}}" bindchange="switchAlarmPush" />
@@ -127,14 +128,11 @@
         <switch class="item-switch" checked="{{alarmSound}}" bindchange="switchAlarmSound" />
       </view>
       <view class="setting-item">
-        <view class="item-label">硬件断连提醒</view>
+        <view class="item-label">设备断连提醒</view>
         <switch class="item-switch" checked="{{disconnectWarn}}" bindchange="switchDisconnectWarn" />
       </view>
     </white-card>
-
-    <view class="save-btn-container">
-      <custom-button text="{{isSaving ? '保存中…' : '保存所有设置'}}" type="orange" size="large" disabled="{{isSaving}}" customClass="save-btn" bind:click="saveSetting"></custom-button>
-    </view>
+    </block>
 
     <view wx:if="{{!isDeviceSetting}}" class="account-actions">
       <button class="logout-btn {{isLoggingOut ? 'btn-disabled' : ''}}" bindtap="logout">
