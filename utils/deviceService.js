@@ -69,10 +69,14 @@ export async function loadDeviceData(deviceId, authToken) {
   const device = createDevice(deviceId);
   applyStoredName(device);
 
-  const [status, location] = await Promise.all([
+  const [status, alarmLocation, installationLocation] = await Promise.all([
     loadDeviceStatus(deviceId, authToken),
-    loadDeviceLocation(deviceId, authToken)
+    loadDeviceLocation(deviceId, authToken),
+    loadDeviceInstallationLocation(deviceId, authToken)
   ]);
+  // 触发式设备待机时没有实时位置：优先显示最近报警位置，否则回退到安装位置。
+  const location = alarmLocation || installationLocation;
+  device.locationSource = alarmLocation ? 'alarm' : (installationLocation ? 'installation' : 'unknown');
 
   if (status) {
     device.status = status;

@@ -37,7 +37,7 @@
         </view>
         <view class="address-row">
           <app-icon name="map-pin" size="14" muted="{{true}}" />
-          <text class="address-text">{{device.address || '请设置安装位置'}}</text>
+          <text class="address-text">{{device.locationSource === 'alarm' ? '最近报警位置：' : '安装位置：'}}{{device.address || '请设置安装位置'}}</text>
         </view>
       </view>
       <view class="overlay-right">

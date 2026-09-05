@@ -1,4 +1,4 @@
-import { loadDeviceData, loadDeviceInstallationLocation, buildMarkers } from '../../utils/deviceService';
+import { loadDeviceData, buildMarkers } from '../../utils/deviceService';
 import http from '../../utils/http';
 import { getStorage, setStorage } from '../../utils/storage';
 import { isValidPhone } from '../../utils/validators';
@@ -87,14 +87,6 @@ Page({
       const deviceEntry = app.getDevice(deviceId);
       const authToken = deviceEntry ? deviceEntry.deviceAccessToken : '';
       const device = await loadDeviceData(deviceId, authToken);
-      const installLocation = await loadDeviceInstallationLocation(deviceId, authToken);
-      if (installLocation) {
-        const latitude = Number(installLocation.gpsLat);
-        const longitude = Number(installLocation.gpsLng);
-        device.latitude = Number.isFinite(latitude) ? latitude : device.latitude;
-        device.longitude = Number.isFinite(longitude) ? longitude : device.longitude;
-        device.address = installLocation.address || device.address;
-      }
       const markers = buildMarkers(device);
       const deviceLoadError = device.status === 'unknown' && !device.address && markers.length === 0;
       this.setData({ device, markers, deviceLoadError });
