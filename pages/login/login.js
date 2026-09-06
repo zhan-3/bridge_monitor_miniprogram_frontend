@@ -28,8 +28,34 @@ Page({
     const token = app.getLoginToken()
     const isLogin = getStorage('isLogin')
     const userInfo = getStorage('userInfo') || {}
-    if (token && isLogin && userInfo.phone) {
-      this.finishLogin()
+    if (token && isLogin) {
+      this.restoreCachedSession(userInfo)
+    }
+  },
+
+  async restoreCachedSession(cachedUserInfo) {
+    this.setData({ loading: true, errMsg: '' })
+    try {
+      const profileRes = await http.get('/user/getMainMessage')
+      const profile = profileRes.data || {}
+      const userInfo = {
+        nickName: profile.nickName || cachedUserInfo.nickName || '',
+        avatarUrl: profile.avatarUrl || cachedUserInfo.avatarUrl || '',
+        phone: profile.phone || ''
+      }
+      setStorage('userInfo', userInfo)
+      if (userInfo.phone) {
+        setStorage('phone', userInfo.phone)
+        await this.restoreBoundDevices()
+        this.finishLogin()
+      } else {
+        this.setData({ step: 2, loading: false })
+      }
+    } catch (error) {
+      logger.error('恢复登录状态失败', { error })
+      if (!error.userNotified) {
+        this.setData({ loading: false, errMsg: '暂时无法验证登录状态，请重试' })
+      }
     }
   },
 
