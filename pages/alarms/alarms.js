@@ -20,8 +20,14 @@ Page({
   onShow() {
     const token = getApp().getLoginToken();
     const isLogin = Boolean(token && getStorage('isLogin'));
-    this.setData({ isLogin });
-    if (isLogin) this.loadAlarms(true);
+    if (!isLogin) {
+      wx.reLaunch({
+        url: `/pages/login/login?redirect=${encodeURIComponent('/pages/alarms/alarms')}`
+      });
+      return;
+    }
+    this.setData({ isLogin: true });
+    this.loadAlarms(true);
   },
 
   selectStatus(e) {

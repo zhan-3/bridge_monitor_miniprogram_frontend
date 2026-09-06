@@ -27,14 +27,8 @@ Page({
     const token = getApp().getLoginToken();
 
     if (!isLogin || !token) {
-      this.setData({
-        isLogin: false,
-        hasPhone: false,
-        userInfo: {},
-        devices: [],
-        currentSn: '',
-        pageLoading: false,
-        loadError: false
+      wx.reLaunch({
+        url: `/pages/login/login?redirect=${encodeURIComponent('/pages/home/home')}`
       });
       return
     }

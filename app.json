@@ -1,9 +1,9 @@
 {
 "pages": [
+    "pages/login/login",
     "pages/alarms/alarms",
     "pages/home/home",
     "pages/device-detail/device-detail",
-    "pages/login/login",
     "pages/setting/setting",
     "pages/audio/audio",
     "pages/devicebinding/devicebinding"

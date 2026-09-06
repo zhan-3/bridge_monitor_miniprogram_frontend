@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const appConfig = require('../app.json');
 const { HOME_URL, resolvePostLoginUrl } = require('../utils/navigation');
 
 test('returns to a safe internal page after login', () => {
@@ -16,7 +17,11 @@ test('uses pending device SN when no explicit redirect exists', () => {
   );
 });
 
-test('uses the alarm inbox as the default landing page', () => {
+test('shows login before protected pages on a fresh launch', () => {
+  assert.equal(appConfig.pages[0], 'pages/login/login');
+});
+
+test('uses the alarm inbox as the default post-login page', () => {
   assert.equal(HOME_URL, '/pages/alarms/alarms');
 });
 

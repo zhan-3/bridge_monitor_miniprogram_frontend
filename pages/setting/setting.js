@@ -418,7 +418,6 @@ Page({
 
     this.setData({ isLoggingOut: true });
     getApp().clearAuthState();
-    wx.showToast({ title: '已退出登录', icon: 'success' });
-    wx.reLaunch({ url: '/pages/alarms/alarms' });
+    wx.reLaunch({ url: '/pages/login/login' });
   }
 });
