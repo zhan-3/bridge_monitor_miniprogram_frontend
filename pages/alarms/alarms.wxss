@@ -95,6 +95,58 @@
   min-width: 0;
 }
 
+.subscription-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 3px 10px rgba(60, 42, 20, 0.06);
+}
+
+.subscription-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.subscription-title,
+.subscription-hint {
+  display: block;
+}
+
+.subscription-title {
+  color: var(--text-main);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.subscription-hint {
+  margin-top: 3px;
+  color: #666;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.subscription-button {
+  flex-shrink: 0;
+  height: 32px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid #f2b16f;
+  border-radius: 16px;
+  background: #fff8ef;
+  color: var(--orange-dark);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 30px;
+}
+
+.subscription-button::after {
+  border: 0;
+}
+
 .tabs {
   display: flex;
   margin-bottom: 12px;

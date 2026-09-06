@@ -2,6 +2,7 @@ import http from '../../utils/http';
 import { getStorage } from '../../utils/storage';
 import logger from '../../utils/logger';
 const { normalizeAlarmItems } = require('../../utils/alarmInbox');
+const { requestAlarmSubscription } = require('../../utils/alarmSubscription');
 
 Page({
   data: {
@@ -12,7 +13,8 @@ Page({
     loadError: false,
     hasMore: false,
     page: 1,
-    handlingId: ''
+    handlingId: '',
+    subscribing: false
   },
 
   onShow() {
@@ -66,6 +68,30 @@ Page({
 
   retryLoad() {
     this.loadAlarms(true);
+  },
+
+  async subscribeAlarmNotifications() {
+    if (this.data.subscribing) return;
+    this.setData({ subscribing: true });
+    try {
+      const decision = await requestAlarmSubscription(wx);
+      if (decision === 'accept') {
+        wx.showToast({ title: '已订阅下一次报警提醒', icon: 'success' });
+      } else if (decision === 'ban') {
+        wx.showModal({
+          title: '通知权限已关闭',
+          content: '请在小程序设置中开启订阅消息权限后重试。',
+          showCancel: false
+        });
+      } else {
+        wx.showToast({ title: '未开启提醒，可稍后再试', icon: 'none' });
+      }
+    } catch (error) {
+      logger.error('订阅微信报警提醒失败', { error });
+      wx.showToast({ title: '暂时无法订阅，请稍后重试', icon: 'none' });
+    } finally {
+      this.setData({ subscribing: false });
+    }
   },
 
   loadMore() {

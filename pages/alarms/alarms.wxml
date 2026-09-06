@@ -18,6 +18,18 @@
     <text>这里记录设备曾经发出的报警；“已处理”仅表示人工确认，不代表设备当前状态。</text>
   </view>
 
+  <view wx:if="{{isLogin}}" class="subscription-bar">
+    <view class="subscription-copy">
+      <text class="subscription-title">微信报警提醒</text>
+      <text class="subscription-hint">每次授权可接收一次设备报警通知</text>
+    </view>
+    <button
+      class="subscription-button {{subscribing ? 'btn-disabled' : ''}}"
+      bindtap="subscribeAlarmNotifications"
+      disabled="{{subscribing}}"
+    >{{subscribing ? '请求中…' : '订阅提醒'}}</button>
+  </view>
+
   <view wx:if="{{!isLogin}}" class="state-panel">
     <view class="state-icon"><app-icon name="inbox" size="44" muted="{{true}}" label="暂无报警记录" /></view>
     <text class="state-title">登录后查看报警记录</text>
