@@ -21,42 +21,20 @@ Page({
     offline: '设备离线'
   },
 
-  onShow() {
+  async onShow() {
     this.isPageVisible = true;
-    const isLogin = getStorage('isLogin');
-    const token = getApp().getLoginToken();
-
-    if (!isLogin || !token) {
-      wx.reLaunch({
-        url: `/pages/login/login?redirect=${encodeURIComponent('/pages/home/home')}`
-      });
-      return
-    }
-
-    const userInfo = getStorage('userInfo') || {};
-
-    if (!userInfo.phone) {
-      this.setData({
-        isLogin: true,
-        hasPhone: false,
-        userInfo,
-        devices: [],
-        currentSn: '',
-        pageLoading: false,
-        loadError: false
-      });
-      wx.showModal({
-        title: '请绑定手机号',
-        content: '绑定手机号后才能正常使用报警服务',
-        showCancel: false,
-        confirmText: '去绑定'
-      }).then(() => {
-        wx.navigateTo({ url: '/pages/setting/setting' });
-      });
+    if (this.authChecking) return;
+    this.authChecking = true;
+    const app = getApp();
+    const outcome = await app.authNavigation.restore({ target: '/pages/home/home' });
+    this.authChecking = false;
+    if (outcome.type === 'retryable-error') {
+      this.setData({ isLogin: true, pageLoading: false, loadError: true });
       return;
     }
+    if (outcome.type !== 'ready') return;
 
-    const app = getApp();
+    const userInfo = getStorage('userInfo') || {};
     this.setData({
       isLogin: true,
       hasPhone: true,
@@ -64,17 +42,16 @@ Page({
       currentSn: app.globalData.selectedDeviceSn,
       loadError: false
     });
-    Promise.all([
-      this.loadUserInfo(),
-      this.loadAllDevices()
-    ]).finally(() => {
+    this.loadAllDevices().finally(() => {
       this.setData({ pageLoading: false });
     });
     this.startPolling();
   },
 
   goBindPhone() {
-    wx.navigateTo({ url: '/pages/setting/setting' });
+    wx.reLaunch({
+      url: `/pages/login/login?redirect=${encodeURIComponent('/pages/home/home')}`
+    });
   },
 
   startPolling() {
@@ -96,7 +73,7 @@ Page({
 
   async loadUserInfo() {
     try {
-      const res = await http.get('/user/getMainMessage');
+      const res = await http.get('/user/getMainMessage', {}, { credentialScope: 'login' });
       if (res.code === 1 && res.data) {
         const cached = getStorage('userInfo') || {};
         const userInfo = {
@@ -132,10 +109,14 @@ Page({
       const results = await Promise.allSettled(
         boundDevices.map(device =>
           http.get('/user/bind/status', { deviceSn: device.sn }, {
-            Authorization: `Bearer ${device.deviceAccessToken}`
+            credentialScope: 'device',
+            credential: device.deviceAccessToken,
+            deviceSn: device.sn
           }).then(bindRes => {
             if (bindRes.code === 1 && bindRes.data) {
-              const displayName = (device.name && device.name !== device.sn) ? device.name : device.sn;
+              const remoteName = typeof bindRes.data.name === 'string' ? bindRes.data.name.trim() : '';
+              const displayName = remoteName || ((device.name && device.name !== device.sn) ? device.name : device.sn);
+              if (remoteName && remoteName !== device.name) app.renameDevice(device.sn, remoteName);
               return {
                 id: device.sn,
                 sn: device.sn,
@@ -176,9 +157,7 @@ Page({
 
   retryLoad() {
     this.setData({ loadError: false, pageLoading: true });
-    Promise.all([this.loadUserInfo(), this.loadAllDevices()]).finally(() => {
-      if (this.isPageVisible) this.setData({ pageLoading: false });
-    });
+    this.onShow();
   },
 
   // 下拉刷新

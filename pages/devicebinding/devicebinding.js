@@ -1,5 +1,4 @@
 import http from '../../utils/http';
-import { getStorage, setStorage } from '../../utils/storage';
 import { isValidSN } from '../../utils/validators';
 import logger from '../../utils/logger';
 
@@ -43,38 +42,21 @@ Page({
       getApp().globalData.pendingSN = deviceSN;
     }
 
-    // 校验用户登录态后再决定是否自动绑定，避免异步状态竞争。
-    const isLogin = await this.checkLoginStatus();
-    if (isLogin && deviceSN) {
-      await this.autoBindDevice(deviceSN);
-    }
-  },
-
-  /**
-   * 校验用户登录态（核心：优先读取缓存中的isLogin）
-   */
-  async checkLoginStatus() {
-    const cacheIsLogin = getStorage('isLogin', false);
-    const loginToken = getApp().getLoginToken();
-
-    if (cacheIsLogin && loginToken) {
-      this.setData({ isLogin: true });
-      return true;
-    } else {
-      setStorage('isLogin', false);
+    const target = deviceSN
+      ? `/pages/devicebinding/devicebinding?sn=${encodeURIComponent(deviceSN)}`
+      : '/pages/devicebinding/devicebinding';
+    const outcome = await getApp().authNavigation.restore({
+      target,
+      pendingDevice: deviceSN || getApp().globalData.pendingSN || ''
+    });
+    if (outcome.type === 'retryable-error') {
       this.setData({ isLogin: false });
-      const sn = this.data.deviceSN || getApp().globalData.pendingSN || '';
-      const redirectUrl = sn
-        ? `/pages/devicebinding/devicebinding?sn=${encodeURIComponent(sn)}`
-        : '/pages/devicebinding/devicebinding';
-      await wx.modal({
-        content: '请先登录后再绑定设备',
-        showCancel: false
-      });
-      wx.redirectTo({
-        url: `/pages/login/login?redirect=${encodeURIComponent(redirectUrl)}`
-      });
-      return false;
+      wx.toast({ title: '暂时无法验证登录状态，请重试', icon: 'none' });
+      return;
+    }
+    if (outcome.type === 'ready') {
+      this.setData({ isLogin: true });
+      if (deviceSN) await this.autoBindDevice(deviceSN);
     }
   },
 
@@ -211,16 +193,20 @@ Page({
         deviceSn: normalizedSN,
         deviceId: normalizedSN
       }, {
-        Authorization: `Bearer ${loginToken}`
-      }, true);
+        credentialScope: 'login',
+        credential: loginToken,
+        allowDeviceRequired: true
+      });
 
       if (bindRes.code === 1 && bindRes.data === '绑定成功') {
         bindRes = await http.post(`/user/bind/userDeviceLogin?deviceSn=${encodeURIComponent(normalizedSN)}&deviceId=${encodeURIComponent(normalizedSN)}`, {
           deviceSn: normalizedSN,
           deviceId: normalizedSN
         }, {
-          Authorization: `Bearer ${loginToken}`
-        }, true);
+          credentialScope: 'login',
+          credential: loginToken,
+          allowDeviceRequired: true
+        });
       }
 
       if (bindRes.code === 1 && bindRes.data && typeof bindRes.data === 'string' && !/[\u4e00-\u9fa5]/.test(bindRes.data)) {
@@ -231,7 +217,7 @@ Page({
 
         wx.toast({ title: '绑定成功', icon: 'success' });
         setTimeout(() => {
-          wx.reLaunch({ url: '/pages/home/home' });
+          wx.navigateTo({ url: '/pages/home/home' });
         }, 1000);
       } else {
         logger.warn('设备绑定被服务端拒绝', { error: bindRes });

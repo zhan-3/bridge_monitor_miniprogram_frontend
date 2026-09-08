@@ -21,6 +21,7 @@ Page({
     currentSn: '',
     currentDeviceAccessToken: '',
     loadError: false,
+    savingName: false,
     savingContact: false,
     deletingContactId: ''
   },
@@ -102,20 +103,41 @@ Page({
     this.setData({ tempName: e.detail.value.trim() });
   },
 
-  saveName() {
-    const { tempName, currentSn } = this.data;
+  async saveName() {
+    const { tempName, currentSn, savingName } = this.data;
+    if (savingName) return;
     if (!tempName || !tempName.trim()) {
       wx.toast({ title: '请输入设备名称', icon: 'none' });
       return;
     }
+
     const newName = tempName.trim();
-    this.setData({
-      'device.name': newName,
-      showEditNameModal: false,
-      tempName: ''
-    });
-    getApp().renameDevice(currentSn, newName);
-    wx.toast({ title: '保存成功', icon: 'success' });
+    const app = getApp();
+    this.setData({ savingName: true });
+    try {
+      await http.post('/device/updateName', {
+        deviceSn: currentSn,
+        name: newName
+      }, {
+        credentialScope: 'device',
+        credential: app.getDeviceAccessToken(currentSn) || this.data.currentDeviceAccessToken,
+        deviceSn: currentSn
+      });
+      app.renameDevice(currentSn, newName);
+      this.setData({
+        'device.name': newName,
+        showEditNameModal: false,
+        tempName: ''
+      });
+      wx.toast({ title: '保存成功', icon: 'success' });
+    } catch (err) {
+      logger.error('保存设备名称失败', { deviceId: currentSn, error: err });
+      if (!err || !err.userNotified) {
+        wx.toast({ title: '名称保存失败，请重试', icon: 'none' });
+      }
+    } finally {
+      this.setData({ savingName: false });
+    }
   },
 
   showAddContact() {
@@ -163,7 +185,11 @@ Page({
       const res = await http.post(
         `/user/addPhoneNumber?number=${encodeURIComponent(tempContactPhone)}&name=${encodeURIComponent(tempContactName)}`,
         {},
-        { Authorization: `Bearer ${authToken}` }
+        {
+          credentialScope: 'device',
+          credential: authToken,
+          deviceSn: this.data.currentSn
+        }
       );
 
       wx.hideLoading();
@@ -209,7 +235,9 @@ Page({
       const authToken = getApp().getDeviceAccessToken(this.data.currentSn) || this.data.currentDeviceAccessToken;
 
       const delRes = await http.delete(`/user/deletePhone?number=${encodeURIComponent(contact.phone)}`, {}, {
-        Authorization: `Bearer ${authToken}`
+        credentialScope: 'device',
+        credential: authToken,
+        deviceSn: this.data.currentSn
       });
 
       wx.hideLoading();
@@ -241,7 +269,7 @@ Page({
 
     wx.toast({ title: '已从本机移除', icon: 'success' });
     setTimeout(() => {
-      wx.reLaunch({ url: '/pages/home/home' });
+      wx.navigateTo({ url: '/pages/home/home' });
     }, 800);
   },
 

@@ -9,9 +9,11 @@ const { loadDeviceDetailsConcurrently } = require('./deviceDetailsLoader');
 async function loadDeviceStatus(deviceId, authToken) {
   try {
     const bindRes = await http.get('/user/bind/status', { deviceSn: deviceId }, {
-      Authorization: `Bearer ${authToken}`
+      credentialScope: 'device',
+      credential: authToken,
+      deviceSn: deviceId
     });
-    return bindRes.code === 1 && bindRes.data ? bindRes.data.status : null;
+    return bindRes.code === 1 && bindRes.data ? bindRes.data : null;
   } catch (err) {
     logger.error('获取设备绑定状态失败', { deviceId, error: err });
     return null;
@@ -21,17 +23,15 @@ async function loadDeviceStatus(deviceId, authToken) {
 async function requestDeviceLocation(endpoint, deviceId, authToken) {
   try {
     const locRes = await http.get(endpoint, { deviceSn: deviceId }, {
-      Authorization: `Bearer ${authToken}`
+      credentialScope: 'device',
+      credential: authToken,
+      deviceSn: deviceId
     });
     return locRes.code === 1 && locRes.data ? locRes.data : null;
   } catch (err) {
     logger.error('获取设备位置失败', { deviceId, endpoint, error: err });
     return null;
   }
-}
-
-function loadDeviceLocation(deviceId, authToken) {
-  return requestDeviceLocation('/user/getLocation', deviceId, authToken);
 }
 
 export function loadDeviceInstallationLocation(deviceId, authToken) {
@@ -69,25 +69,31 @@ export async function loadDeviceData(deviceId, authToken) {
   const device = createDevice(deviceId);
   applyStoredName(device);
 
-  const [status, alarmLocation, installationLocation] = await Promise.all([
+  const [statusDetails, installationLocation] = await Promise.all([
     loadDeviceStatus(deviceId, authToken),
-    loadDeviceLocation(deviceId, authToken),
     loadDeviceInstallationLocation(deviceId, authToken)
   ]);
-  // 触发式设备待机时没有实时位置：优先显示最近报警位置，否则回退到安装位置。
-  const location = alarmLocation || installationLocation;
-  device.locationSource = alarmLocation ? 'alarm' : (installationLocation ? 'installation' : 'unknown');
+  device.locationSource = installationLocation ? 'installation' : 'unknown';
 
-  if (status) {
-    device.status = status;
-    device.statusText = DEVICE_STATUS_MAP[status] || '未知状态';
+  if (statusDetails) {
+    device.status = statusDetails.status || 'unknown';
+    device.statusText = DEVICE_STATUS_MAP[device.status] || '未知状态';
+    const remoteName = typeof statusDetails.name === 'string' ? statusDetails.name.trim() : '';
+    if (remoteName) {
+      device.name = remoteName;
+      try {
+        getApp().renameDevice(deviceId, remoteName);
+      } catch (err) {
+        logger.debug('服务端设备名称未同步到本地缓存', { deviceId, error: err });
+      }
+    }
   }
-  if (location) {
-    const latitude = Number(location.gpsLat);
-    const longitude = Number(location.gpsLng);
+  if (installationLocation) {
+    const latitude = Number(installationLocation.gpsLat);
+    const longitude = Number(installationLocation.gpsLng);
     device.latitude = Number.isFinite(latitude) ? latitude : null;
     device.longitude = Number.isFinite(longitude) ? longitude : null;
-    device.address = location.address || '';
+    device.address = installationLocation.address || '';
   }
 
   return device;
@@ -96,7 +102,9 @@ export async function loadDeviceData(deviceId, authToken) {
 export async function loadDeviceContacts(authToken, deviceId) {
   try {
     const phoneRes = await http.get('/user/userGetPhone', { deviceSn: deviceId }, {
-      Authorization: `Bearer ${authToken}`
+      credentialScope: 'device',
+      credential: authToken,
+      deviceSn: deviceId
     });
     if (phoneRes.code === 1 && Array.isArray(phoneRes.data)) {
       const nameCache = getStorage('contactNameCache') || {};

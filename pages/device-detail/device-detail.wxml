@@ -37,7 +37,7 @@
         </view>
         <view class="address-row">
           <app-icon name="map-pin" size="14" muted="{{true}}" />
-          <text class="address-text">{{device.locationSource === 'alarm' ? '最近报警位置：' : '安装位置：'}}{{device.address || '请设置安装位置'}}</text>
+          <text class="address-text">安装位置：{{device.address || '请设置安装位置'}}</text>
         </view>
       </view>
       <view class="overlay-right">
@@ -57,9 +57,9 @@
     </view>
   </view>
 
-  <white-card title="紧急联系人" customClass="contact-card" showRightContent="true">
+  <white-card title="其他紧急联系人" customClass="contact-card" showRightContent="true">
     <view slot="rightContent">
-      <view class="add-btn" bindtap="showAddContact" aria-label="添加紧急联系人">
+      <view class="add-btn" bindtap="showAddContact" aria-label="添加其他紧急联系人">
         <app-icon name="plus" size="18" />
       </view>
     </view>
@@ -82,8 +82,8 @@
     </view>
 
     <view wx:if="{{!device || !device.contacts || device.contacts.length === 0}}" class="empty-state">
-      <view class="empty-icon"><app-icon name="user-round-x" size="42" muted="{{true}}" label="暂无紧急联系人" /></view>
-      <text class="empty-text">暂无紧急联系人</text>
+      <view class="empty-icon"><app-icon name="user-round-x" size="42" muted="{{true}}" label="暂无其他紧急联系人" /></view>
+      <text class="empty-text">暂无其他紧急联系人</text>
       <text class="empty-hint">点击右上角「＋」添加联系人</text>
     </view>
   </white-card>
@@ -115,15 +115,15 @@
   </view>
   <view class="modal-footer">
     <view class="modal-btn cancel" bindtap="closeEditNameModal" hover-class="btn-press">取消</view>
-    <view class="modal-btn confirm" bindtap="saveName" hover-class="btn-press">保存</view>
+    <view class="modal-btn confirm {{savingName ? 'btn-disabled' : ''}}" bindtap="saveName" hover-class="btn-press">{{savingName ? '保存中…' : '保存'}}</view>
   </view>
 </view>
 
-<!-- 添加紧急联系人弹窗 -->
+<!-- 添加其他紧急联系人弹窗 -->
 <view class="modal-mask" wx:if="{{showAddContactModal}}" bindtap="closeAddContactModal"></view>
 <view class="modal-container" wx:if="{{showAddContactModal}}" catchtap>
   <view class="modal-header">
-    <view class="modal-title">添加紧急联系人</view>
+    <view class="modal-title">添加其他紧急联系人</view>
     <view class="modal-close" bindtap="closeAddContactModal" aria-label="关闭">
       <app-icon name="x-gray" size="20" />
     </view>

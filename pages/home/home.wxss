@@ -110,9 +110,23 @@
   min-width: 0;
 }
 
+.device-name,
+.device-sn {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .device-name {
-  font-size: 14px;
   color: #333;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.device-sn {
+  margin-top: 2px;
+  color: #777;
+  font-size: 11px;
 }
 
 .device-status-group {
