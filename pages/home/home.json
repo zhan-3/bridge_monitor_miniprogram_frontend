@@ -3,6 +3,7 @@
   "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark",
   "usingComponents": {
+    "app-icon": "/components/app-icon/app-icon",
     "white-card": "/components/white-card/white-card"
   }
 }

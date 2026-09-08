@@ -1,6 +1,7 @@
 {
   "navigationBarTitleText": "功能设置",
   "usingComponents": {
+    "app-icon": "/components/app-icon/app-icon",
     "white-card": "/components/white-card/white-card"
   }
 }

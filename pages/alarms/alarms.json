@@ -1,4 +1,10 @@
 {
   "navigationBarTitleText": "报警",
-  "enablePullDownRefresh": true
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "backgroundColor": "#f6f6f6",
+  "backgroundTextStyle": "dark",
+  "usingComponents": {
+    "app-icon": "/components/app-icon/app-icon"
+  }
 }
