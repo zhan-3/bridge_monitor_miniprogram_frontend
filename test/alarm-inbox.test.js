@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { formatDateTime, normalizeAlarmItems } = require('../utils/alarmInbox');
+const { formatDateTime, normalizeAlarmItems, mergeAlarmItems } = require('../utils/alarmInbox');
 
 test('formats recent alarm times in a human-friendly way', () => {
   const now = new Date('2026-09-05T18:00:00');
@@ -24,6 +24,57 @@ test('normalizes alarm ids without inventing status', () => {
   assert.equal(item.displayHandledAt, '');
 });
 
+test('adds the local device name without replacing the event device SN', () => {
+  const item = normalizeAlarmItems([{
+    alarmId: '42',
+    deviceSn: 'SN-001',
+    status: 'pending'
+  }], [{ sn: 'SN-001', name: '东桥烟感' }])[0];
+
+  assert.equal(item.deviceName, '东桥烟感');
+  assert.equal(item.deviceSn, 'SN-001');
+  assert.equal(item.canHandle, true);
+});
+
+test('marks an alarm without an id as unavailable for handling', () => {
+  const item = normalizeAlarmItems([{ status: 'pending' }])[0];
+  assert.equal(item.canHandle, false);
+});
+
+test('sorts pending and handled alarms by alarm time from newest to oldest', () => {
+  for (const status of ['pending', 'handled']) {
+    const items = normalizeAlarmItems([
+      { alarmId: `${status}-old`, status, alarmTime: '2026-09-05T08:00:00' },
+      { alarmId: `${status}-new`, status, alarmTime: '2026-09-07T08:00:00' },
+      { alarmId: `${status}-middle`, status, alarmTime: '2026-09-06T08:00:00' }
+    ]);
+
+    assert.deepEqual(items.map(item => item.alarmId), [
+      `${status}-new`,
+      `${status}-middle`,
+      `${status}-old`
+    ]);
+  }
+});
+
 test('treats a missing alarm collection as empty', () => {
   assert.deepEqual(normalizeAlarmItems(null), []);
+});
+
+test('appends alarm pages without duplicating stable alarm ids', () => {
+  const firstPage = [{ alarmId: '3' }, { alarmId: '2' }];
+  const secondPage = [{ alarmId: '2' }, { alarmId: '1' }];
+
+  assert.deepEqual(mergeAlarmItems(firstPage, secondPage), [
+    { alarmId: '3' },
+    { alarmId: '2' },
+    { alarmId: '1' }
+  ]);
+});
+
+test('keeps alarm items without ids instead of silently dropping data', () => {
+  assert.deepEqual(mergeAlarmItems(null, [{ alarmId: '' }, { alarmId: '' }]), [
+    { alarmId: '' },
+    { alarmId: '' }
+  ]);
 });

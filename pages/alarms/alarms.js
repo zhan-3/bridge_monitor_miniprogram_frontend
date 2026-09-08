@@ -1,62 +1,69 @@
 import http from '../../utils/http';
-import { getStorage } from '../../utils/storage';
 import logger from '../../utils/logger';
-const { normalizeAlarmItems } = require('../../utils/alarmInbox');
+const { normalizeAlarmItems, mergeAlarmItems } = require('../../utils/alarmInbox');
 const { requestAlarmSubscription } = require('../../utils/alarmSubscription');
 
 Page({
   data: {
     isLogin: false,
-    activeStatus: 'pending',
     alarms: [],
     loading: false,
     loadError: false,
+    authRetryNeeded: false,
     hasMore: false,
     page: 1,
+    handledAlarms: [],
+    handledExpanded: false,
+    handledLoading: false,
+    handledLoadError: false,
+    handledHasMore: false,
+    handledPage: 1,
+    statusBarHeight: 0,
     handlingId: '',
-    subscribing: false
+    subscribing: false,
+    subscriptionAccepted: false
   },
 
-  onShow() {
-    const token = getApp().getLoginToken();
-    const isLogin = Boolean(token && getStorage('isLogin'));
-    if (!isLogin) {
-      wx.reLaunch({
-        url: `/pages/login/login?redirect=${encodeURIComponent('/pages/alarms/alarms')}`
-      });
+  onLoad() {
+    const windowInfo = typeof wx.getWindowInfo === 'function'
+      ? wx.getWindowInfo()
+      : wx.getSystemInfoSync();
+    this.setData({ statusBarHeight: windowInfo.statusBarHeight || 0 });
+  },
+
+  async onShow() {
+    if (this.authChecking) return;
+    this.authChecking = true;
+    const outcome = await getApp().authNavigation.restore({ target: '/pages/alarms/alarms' });
+    this.authChecking = false;
+    if (outcome.type === 'ready') {
+      this.setData({ isLogin: true, authRetryNeeded: false });
+      this.loadAlarms(true);
       return;
     }
-    this.setData({ isLogin: true });
-    this.loadAlarms(true);
+    if (outcome.type === 'retryable-error') {
+      this.setData({ isLogin: true, authRetryNeeded: true, loadError: true });
+    }
   },
 
-  selectStatus(e) {
-    const status = e.currentTarget.dataset.status;
-    if (status === this.data.activeStatus || this.data.loading) return;
-    this.setData({
-      activeStatus: status,
-      alarms: [],
-      page: 1,
-      hasMore: false,
-      loadError: false
-    });
-    if (this.data.isLogin) this.loadAlarms(true);
-  },
-
-  async loadAlarms(reset = false) {
-    if (!this.data.isLogin || this.data.loading) return;
+  async loadAlarms(reset = false, queueIfBusy = false) {
+    if (!this.data.isLogin) return;
+    if (this.data.loading) {
+      if (reset && queueIfBusy) this.reloadAfterCurrentLoad = true;
+      return;
+    }
     const page = reset ? 1 : this.data.page;
     this.setData({ loading: true, loadError: false });
     try {
       const res = await http.get('/user/alarms', {
-        status: this.data.activeStatus,
+        status: 'pending',
         page,
         pageSize: 20
-      });
+      }, { credentialScope: 'login' });
       const result = res.data || {};
-      const items = normalizeAlarmItems(result.items);
+      const items = normalizeAlarmItems(result.items, getApp().listBoundDevices());
       this.setData({
-        alarms: reset ? items : [...this.data.alarms, ...items],
+        alarms: reset ? items : mergeAlarmItems(this.data.alarms, items),
         page: page + 1,
         hasMore: Boolean(result.hasMore)
       });
@@ -69,19 +76,63 @@ Page({
       }
     } finally {
       this.setData({ loading: false });
+      if (this.reloadAfterCurrentLoad) {
+        this.reloadAfterCurrentLoad = false;
+        await this.loadAlarms(true);
+      }
     }
   },
 
   retryLoad() {
+    if (this.data.authRetryNeeded) {
+      this.onShow();
+      return;
+    }
     this.loadAlarms(true);
   },
 
+  async showHandledAlarms() {
+    if (this.data.handledExpanded) return;
+    this.setData({ handledExpanded: true });
+    await this.loadHandledAlarms(true);
+  },
+
+  async loadHandledAlarms(reset = false) {
+    if (!this.data.isLogin || this.data.handledLoading) return;
+    const page = reset ? 1 : this.data.handledPage;
+    this.setData({ handledLoading: true, handledLoadError: false });
+    try {
+      const res = await http.get('/user/alarms', {
+        status: 'handled',
+        page,
+        pageSize: 20
+      }, { credentialScope: 'login' });
+      const result = res.data || {};
+      const items = normalizeAlarmItems(result.items, getApp().listBoundDevices());
+      this.setData({
+        handledAlarms: reset ? items : mergeAlarmItems(this.data.handledAlarms, items),
+        handledPage: page + 1,
+        handledHasMore: Boolean(result.hasMore)
+      });
+    } catch (error) {
+      logger.error('加载已处理报警失败', { error });
+      this.setData({ handledLoadError: true });
+    } finally {
+      this.setData({ handledLoading: false });
+    }
+  },
+
+  retryHandledAlarms() {
+    this.loadHandledAlarms(true);
+  },
+
   async subscribeAlarmNotifications() {
-    if (this.data.subscribing) return;
+    if (this.data.subscribing || this.data.subscriptionAccepted) return;
     this.setData({ subscribing: true });
     try {
       const decision = await requestAlarmSubscription(wx);
       if (decision === 'accept') {
+        this.setData({ subscriptionAccepted: true });
         wx.showToast({ title: '已订阅下一次报警提醒', icon: 'success' });
       } else if (decision === 'ban') {
         wx.showModal({
@@ -104,7 +155,15 @@ Page({
     if (this.data.hasMore && !this.data.loading) this.loadAlarms(false);
   },
 
+  loadMoreHandled() {
+    if (this.data.handledHasMore && !this.data.handledLoading) this.loadHandledAlarms(false);
+  },
+
   onPullDownRefresh() {
+    if (this.data.authRetryNeeded) {
+      this.onShow().finally(() => wx.stopPullDownRefresh());
+      return;
+    }
     if (!this.data.isLogin) {
       wx.stopPullDownRefresh();
       return;
@@ -115,20 +174,39 @@ Page({
   async handleAlarm(e) {
     const alarmId = String(e.currentTarget.dataset.id || '');
     if (!alarmId || this.data.handlingId) return;
-    const confirmed = await wx.modal({
-      title: '确认已经处理？',
-      content: '你和其他联系人都将看到“已处理”。这不会改变设备当前状态。',
-      confirmText: '确认已处理'
-    });
-    if (!confirmed) return;
 
     this.setData({ handlingId: alarmId });
     try {
-      await http.post('/user/alarms/handle', { alarmId });
+      const confirmed = await new Promise((resolve, reject) => {
+        wx.showModal({
+          title: '确认已经处理？',
+          content: '你和其他联系人都将看到“已处理”。这不会改变设备当前状态。',
+          confirmText: '确认处理',
+          success: result => resolve(Boolean(result.confirm)),
+          fail: reject
+        });
+      });
+      if (!confirmed) return;
+
+      await http.post('/user/alarms/handle', { alarmId }, { credentialScope: 'login' });
+      const handledAlarm = this.data.alarms.find(item => String(item.alarmId) === alarmId);
+      const updates = {
+        alarms: this.data.alarms.filter(item => String(item.alarmId) !== alarmId)
+      };
+      if (handledAlarm && this.data.handledExpanded) {
+        updates.handledAlarms = [{
+          ...handledAlarm,
+          status: 'handled',
+          displayHandledAt: '刚刚'
+        }, ...this.data.handledAlarms];
+      }
+      this.setData(updates);
       wx.showToast({ title: '已确认处理', icon: 'success' });
-      await this.loadAlarms(true);
     } catch (error) {
       logger.error('标记报警处理失败', { alarmId, error });
+      if (!error || !error.userNotified) {
+        wx.showToast({ title: '处理失败，请重试', icon: 'none' });
+      }
     } finally {
       this.setData({ handlingId: '' });
     }

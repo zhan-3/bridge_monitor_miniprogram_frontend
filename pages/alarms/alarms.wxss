@@ -1,3 +1,19 @@
+.custom-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: content-box;
+  height: 44px;
+  background: var(--orange-primary);
+  color: #fff;
+}
+
+.custom-navigation-title {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 44px;
+}
+
 .container {
   min-height: 100vh;
   box-sizing: border-box;
@@ -147,28 +163,65 @@
   border: 0;
 }
 
-.tabs {
+.alarm-section-heading {
   display: flex;
-  margin-bottom: 12px;
-  padding: 4px;
-  border: 1rpx solid #eeeeee;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 2px 2px 10px;
+}
+
+.alarm-section-title {
+  color: var(--text-main);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.alarm-section-note {
+  color: #737373;
+  font-size: 11px;
+}
+
+.handled-heading {
+  margin-top: 22px;
+}
+
+.handled-disclosure {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1rpx solid var(--border-color);
   border-radius: 12px;
   background: #fff;
 }
 
-.tab {
-  flex: 1;
-  padding: 8px 0;
-  border-radius: 9px;
-  color: #666;
-  text-align: center;
-  font-size: 14px;
+.handled-disclosure-title,
+.handled-disclosure-hint {
+  display: block;
 }
 
-.tab.active {
-  background: var(--orange-light);
-  color: var(--orange-dark);
+.handled-disclosure-title {
+  color: var(--text-main);
+  font-size: 14px;
   font-weight: 600;
+}
+
+.handled-disclosure-hint {
+  margin-top: 2px;
+  color: #737373;
+  font-size: 11px;
+}
+
+.handled-disclosure-arrow {
+  color: #777;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.compact-state-panel {
+  padding: 24px 16px;
 }
 
 .alarm-sheet,
@@ -217,15 +270,29 @@
   gap: 12px;
 }
 
-.device-name {
+.device-identity {
   flex: 1;
   min-width: 0;
+}
+
+.device-name,
+.device-sn {
+  display: block;
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.device-name {
   color: var(--text-main);
   font-size: 15px;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.device-sn {
+  margin-top: 1px;
+  color: #777;
+  font-size: 11px;
 }
 
 .alarm-status {
@@ -292,13 +359,24 @@
 }
 
 .handle-button {
+  flex-shrink: 0;
   margin-left: auto;
+  text-align: center;
 }
 
-.handled-time {
+.action-pressed {
+  opacity: 0.75;
+}
+
+.handled-time,
+.action-unavailable {
   margin-left: auto;
   color: #777;
   font-size: 12px;
+}
+
+.action-unavailable {
+  color: #999;
 }
 
 .state-panel {
