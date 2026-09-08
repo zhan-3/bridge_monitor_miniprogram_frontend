@@ -1,6 +1,8 @@
-function classifyAuthResponse(statusCode, skipAuthCheck) {
-  if (statusCode === 401) return { type: 'auth-expired' };
-  if (statusCode === 403 && !skipAuthCheck) return { type: 'device-required' };
+function classifyAuthResponse(statusCode, credentialScope, allowDeviceRequired = false) {
+  if (statusCode === 401 && credentialScope !== 'none') {
+    return { type: 'credential-invalid', scope: credentialScope };
+  }
+  if (statusCode === 403 && !allowDeviceRequired) return { type: 'device-required' };
   return { type: 'continue' };
 }
 

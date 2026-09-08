@@ -1,20 +1,13 @@
 // app.js
 import './utils/extendApi'
-import { setStorage, getStorage, removeStorage, clearStorage } from './utils/storage'
+import http from './utils/http'
 import { isValidSN } from './utils/validators'
 import logger from './utils/logger'
 
 const { createBoundDeviceSet } = require('./utils/boundDeviceSet')
-const { createLoginCredential } = require('./utils/loginCredential')
-const { createAuthReset } = require('./utils/authReset')
-
-function wxStorageAdapter() {
-  return {
-    get: getStorage,
-    set: setStorage,
-    remove: removeStorage
-  }
-}
+const { createAuthNavigation } = require('./utils/authNavigation')
+const { createAuthTransport } = require('./utils/authTransport')
+const { createWxStorageAdapter, createWxNavigationAdapter } = require('./utils/authAdapters')
 
 App({
   globalData: {
@@ -35,21 +28,22 @@ App({
       logger.warn('无法读取运行环境，使用默认日志级别', { error })
     }
     logger.info('小程序启动')
-    const storage = wxStorageAdapter()
-    this.loginCredential = createLoginCredential(storage)
-    this.boundDeviceSet = createBoundDeviceSet(storage)
-    this.authReset = createAuthReset({
-      loginCredential: this.loginCredential,
-      boundDeviceSet: this.boundDeviceSet,
-      removeStorage,
-      clearStorage
-    })
 
-    const loginToken = this.loginCredential.get()
-    if (loginToken && getStorage('isLogin')) {
-      this.globalData.loginToken = loginToken
-      this.globalData.hasBaseLogin = true
-    }
+    const storage = createWxStorageAdapter(wx)
+    this.boundDeviceSet = createBoundDeviceSet(storage)
+    this.authNavigation = createAuthNavigation({
+      storage,
+      transport: createAuthTransport(http),
+      navigation: createWxNavigationAdapter(wx, () => getCurrentPages()),
+      boundDeviceSet: this.boundDeviceSet,
+      onStateChange: state => {
+        this.globalData.loginToken = state.loginToken
+        this.globalData.hasBaseLogin = state.isLoggedIn
+        this.globalData.userInfo = state.profile
+        this.globalData.boundDevices = state.devices
+        this.globalData.selectedDeviceSn = state.selectedDeviceSn
+      }
+    })
     this.syncBoundDeviceState()
 
     // options.scene 是微信入口场景值；设备参数位于 options.query.scene。
@@ -78,14 +72,8 @@ App({
     this.globalData.selectedDeviceSn = this.boundDeviceSet.selectedDeviceSn()
   },
 
-  setLoginToken(loginToken) {
-    this.loginCredential.set(loginToken)
-    this.globalData.loginToken = loginToken
-    this.globalData.hasBaseLogin = true
-  },
-
   getLoginToken() {
-    return this.loginCredential ? this.loginCredential.get() : getStorage('loginToken') || getStorage('token')
+    return this.globalData.loginToken
   },
 
   listBoundDevices() {
@@ -125,11 +113,7 @@ App({
   },
 
   clearAuthState() {
-    if (this.authReset) this.authReset.clear()
-    this.globalData.loginToken = ''
-    this.globalData.hasBaseLogin = false
-    this.globalData.boundDevices = []
-    this.globalData.selectedDeviceSn = ''
+    if (this.authNavigation) this.authNavigation.invalidate('login')
     this.globalData.pendingSN = ''
   }
 })

@@ -1,7 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createBoundDeviceSet } = require('../utils/boundDeviceSet');
-const { createLoginCredential } = require('../utils/loginCredential');
 
 function memoryStorage(initial = {}) {
   const values = { ...initial };
@@ -50,14 +49,13 @@ test('binding a device atomically stores its credential and selects it', () => {
 
 test('selecting a device never changes the login credential', () => {
   const storage = memoryStorage({ loginToken: 'login-user' });
-  const login = createLoginCredential(storage);
   const devices = createBoundDeviceSet(storage);
 
   devices.bind({ sn: 'A', name: '桥 A', deviceAccessToken: 'access-A' });
   devices.bind({ sn: 'B', name: '桥 B', deviceAccessToken: 'access-B' });
   devices.select('A');
 
-  assert.equal(login.get(), 'login-user');
+  assert.equal(storage.snapshot().loginToken, 'login-user');
   assert.equal(devices.deviceAccessToken('A'), 'access-A');
   assert.equal(devices.deviceAccessToken('B'), 'access-B');
 });
@@ -100,15 +98,4 @@ test('removing the selected local device selects the next available device', () 
   assert.deepEqual(devices.list(), [{ sn: 'A', name: 'A', deviceAccessToken: 'access-A' }]);
   assert.equal(devices.selectedDeviceSn(), 'A');
   assert.equal(devices.remove('missing'), false);
-});
-
-test('login credential migrates from the legacy token key but new writes use loginToken', () => {
-  const storage = memoryStorage({ token: 'login-user' });
-  const login = createLoginCredential(storage);
-
-  assert.equal(login.get(), 'login-user');
-  login.set('new-login-user');
-
-  assert.equal(storage.snapshot().loginToken, 'new-login-user');
-  assert.equal(storage.snapshot().token, 'login-user');
 });
